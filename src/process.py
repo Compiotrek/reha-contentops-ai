@@ -9,7 +9,7 @@ from src.decide import apply_routing, decide_match_status
 from src.load_data import load_exercises, load_feedback_messages
 from src.match import match_exercises_embeddings, match_exercises_placeholder
 from src.report import generate_daily_report
-from src.schemas import ProcessedFeedback
+from src.schemas import Exercise, FeedbackMessage, ProcessedFeedback
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -29,28 +29,48 @@ def process_feedback(
     classify = _get_classifier(classifier)
     match = _get_matcher(matcher)
 
-    processed_items: list[ProcessedFeedback] = []
-    for message in feedback_messages:
-        classified = classify(message)
-        classified.routing = apply_routing(classified)
-        matches = match(classified, exercises)
-        decision = decide_match_status(classified, matches)
-
-        processed_items.append(
-            ProcessedFeedback(
-                message=message,
-                classification=classified,
-                matches=matches,
-                decision=decision,
-                matcher_mode=matcher,
-                top_matches=matches,
-                match_status=decision.match_status,
-                decision_reason=decision.reason,
-                final_action=decision.final_action,
-            )
+    return [
+        process_single_feedback(
+            feedback_message=message,
+            exercises=exercises,
+            classifier_mode=classifier,
+            matcher_mode=matcher,
+            classifier=classify,
+            matcher_fn=match,
         )
+        for message in feedback_messages
+    ]
 
-    return processed_items
+
+def process_single_feedback(
+    feedback_message: FeedbackMessage,
+    exercises: list[Exercise],
+    classifier_mode: str,
+    matcher_mode: str,
+    classifier=None,
+    matcher_fn=None,
+) -> ProcessedFeedback:
+    classify = classifier or _get_classifier(classifier_mode)
+    match = matcher_fn or _get_matcher(matcher_mode)
+
+    classified = classify(feedback_message)
+    classified.routing = apply_routing(classified)
+    matches = match(classified, exercises)
+    decision = decide_match_status(classified, matches)
+
+    return ProcessedFeedback(
+        message=feedback_message,
+        classification=classified,
+        matches=matches,
+        decision=decision,
+        classifier_mode=classifier_mode,
+        matcher_mode=matcher_mode,
+        routing=decision.routing,
+        top_matches=matches,
+        match_status=decision.match_status,
+        decision_reason=decision.reason,
+        final_action=decision.final_action,
+    )
 
 
 def _get_classifier(classifier: str):

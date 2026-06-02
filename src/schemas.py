@@ -76,7 +76,9 @@ class ProcessedFeedback(BaseModel):
     classification: ClassifiedFeedback
     matches: list[MatchResult]
     decision: DecisionResult
+    classifier_mode: str = "mock"
     matcher_mode: str = "placeholder"
+    routing: str
     top_matches: list[MatchResult] = Field(default_factory=list)
     match_status: str
     decision_reason: str

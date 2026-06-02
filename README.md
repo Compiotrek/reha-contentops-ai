@@ -107,6 +107,32 @@ Run tests:
 pytest
 ```
 
+## FastAPI Service
+
+Run the API locally:
+
+```bash
+uvicorn src.api:app --reload
+```
+
+Test health:
+
+```bash
+curl http://localhost:8000/health
+```
+
+Process one feedback message:
+
+```bash
+curl -X POST http://localhost:8000/process-feedback \
+  -H "Content-Type: application/json" \
+  -d '{"message_id":"msg_demo_001","user_message":"Die Knieübungen sind zu schwer. Ich hätte gern leichtere Varianten ohne Geräte.","classifier":"mock","matcher":"placeholder"}'
+```
+
+`classifier` and `matcher` are optional. Defaults are `mock` and `placeholder`.
+
+n8n can call `POST /process-feedback` with an HTTP Request node and pass the feedback message plus optional classifier and matcher modes.
+
 ## Output Files
 
 The pipeline writes:
@@ -138,6 +164,7 @@ RAG matching is conservative: strong matches can be marked as existing content, 
 ## Next Steps
 
 - Add validation against `data/expected_labels.csv`.
+- Add a cost-aware local ML pre-classifier once enough labeled feedback data exists. It is intentionally not part of this MVP because the current synthetic labeled dataset is too small for a stable model.
 - Add repeated-request clustering before any content gap workflow.
 - Add reviewer-facing output states and audit logs.
 - Expand synthetic test cases and report checks.

@@ -4,4 +4,6 @@ python-dotenv
 scikit-learn
 numpy
 openai
+fastapi
+uvicorn
 pytest
