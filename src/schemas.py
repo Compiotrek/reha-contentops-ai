@@ -26,12 +26,14 @@ class Exercise(BaseModel):
     exercise_id: str
     title: str
     body_region: str
+    indication: str = ""
     therapy_goal: str
     difficulty: str
     equipment: str
     position: str
     description: str
     tags: str
+    contraindication_note: str = ""
     review_status: str
 
 

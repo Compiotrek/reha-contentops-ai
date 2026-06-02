@@ -33,12 +33,14 @@ def exercise_to_search_text(exercise: Exercise) -> str:
     return (
         f"title: {exercise.title};\n"
         f"body_region: {exercise.body_region};\n"
+        f"indication: {exercise.indication};\n"
         f"therapy_goal: {exercise.therapy_goal};\n"
         f"difficulty: {exercise.difficulty};\n"
         f"equipment: {exercise.equipment};\n"
         f"position: {exercise.position};\n"
         f"description: {exercise.description};\n"
         f"tags: {tags};\n"
+        f"contraindication_note: {exercise.contraindication_note};\n"
         f"review_status: {exercise.review_status}"
     )
 

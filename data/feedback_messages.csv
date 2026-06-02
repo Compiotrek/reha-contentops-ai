@@ -1,21 +1,181 @@
-message_id,user_message
-msg_001,"Die Knieübungen sind zu schwer. Ich hätte gern leichtere Varianten ohne Geräte."
-msg_002,"Super erklärt, die Rückenübung war gut verständlich und angenehm."
-msg_003,"Mir wird bei der Schulterübung schwindelig und ich fühle mich unsicher."
-msg_004,"Bitte mehr Übungen im Sitzen für den unteren Rücken."
-msg_005,"Die Videos sind zu lang und das nervt nach der Arbeit."
-msg_006,"Ich brauche Übungen mit Theraband für die Schulter."
-msg_007,"Nach meiner OP darf ich diese Bewegung vielleicht nicht machen."
-msg_008,"Bei einer Übung steht Knie, aber sie fühlt sich eher wie Rücken an."
-msg_009,"Ich finde die App gerade problematisch, der Startbutton reagiert nicht."
-msg_010,"Mehr Balanceübungen ohne Geräte wären hilfreich."
-msg_011,"Die Beschreibung ist unklar, ich weiß nicht, wie weit ich beugen soll."
-msg_012,"Die Miniband-Übung ist gut, aber ich hätte gern eine leichtere Stufe."
-msg_013,"Ich habe Schmerzen beim Ausfallschritt."
-msg_014,"Könnt ihr Übungen auf dem Stuhl für Senioren ergänzen?"
-msg_015,"Der Tag Anfänger passt nicht, die Übung ist eher fortgeschritten."
-msg_016,"Alles verständlich, die kurze Anleitung gefällt mir."
-msg_017,"Ich brauche etwas für die Hüfte, finde aber nur Knieübungen."
-msg_018,"Die Übung ohne Geräte ist zu leicht, bitte eine schwerere Variante."
-msg_019,"Keine Ahnung, irgendwas passt da nicht."
-msg_020,"Bitte mehr Schulter-Mobilisation im Liegen."
+message_id,timestamp,user_message,source
+msg_001,2026-05-29 08:00:00,Bitte mehr Knieübungen ohne Geräte.,app_feedback
+msg_002,2026-05-29 08:03:00,Ich hätte gern Rückenübungen für Fortgeschrittene mit Stuhl.,survey
+msg_003,2026-05-29 08:07:00,Gibt es kurze Inhalte für Schulter im Heimtraining mit Theraband?,support_message
+msg_004,2026-05-29 08:10:00,"Könnt ihr eine Variante für Hüfte ergänzen, am liebsten mit Miniband?",content_rating
+msg_005,2026-05-29 08:13:00,Ich suche Sprunggelenkübungen in einfacher Sprache und an der Wand.,chat_feedback
+msg_006,2026-05-29 08:17:00,Bitte mehr Nackenübungen auf der Matte.,app_feedback
+msg_007,2026-05-29 08:20:00,Ich hätte gern allgemeine Übungen für Anfänger mit Handtuch.,survey
+msg_008,2026-05-29 08:23:00,Gibt es kurze Inhalte für Knie im Heimtraining ohne Geräte?,support_message
+msg_009,2026-05-29 08:27:00,"Könnt ihr eine Variante für Rücken ergänzen, am liebsten mit Stuhl?",content_rating
+msg_010,2026-05-29 08:30:00,Ich suche Schulterübungen in einfacher Sprache und mit Theraband.,chat_feedback
+msg_011,2026-05-29 08:34:00,Bitte mehr Hüfteübungen mit Miniband.,app_feedback
+msg_012,2026-05-29 08:37:00,Ich hätte gern Sprunggelenkübungen anspruchsvoller an der Wand.,survey
+msg_013,2026-05-29 08:40:00,Gibt es kurze Inhalte für Nacken im Heimtraining auf der Matte?,support_message
+msg_014,2026-05-29 08:44:00,"Könnt ihr eine Variante für allgemeines Training ergänzen, am liebsten mit Handtuch?",content_rating
+msg_015,2026-05-29 08:47:00,Ich suche Knieübungen in einfacher Sprache und ohne Geräte.,chat_feedback
+msg_016,2026-05-29 08:50:00,Bitte mehr Rückenübungen mit Stuhl.,app_feedback
+msg_017,2026-05-29 08:54:00,Ich hätte gern Schulterübungen für Fortgeschrittene mit Theraband.,survey
+msg_018,2026-05-29 08:57:00,Gibt es kurze Inhalte für Hüfte im Heimtraining mit Miniband?,support_message
+msg_019,2026-05-29 09:00:00,"Könnt ihr eine Variante für Sprunggelenk ergänzen, am liebsten an der Wand?",content_rating
+msg_020,2026-05-29 09:04:00,Ich suche Nackenübungen in einfacher Sprache und auf der Matte.,chat_feedback
+msg_021,2026-05-29 09:07:00,Bitte mehr allgemeine Übungen mit Handtuch.,app_feedback
+msg_022,2026-05-29 09:10:00,Ich hätte gern Knieübungen für Anfänger ohne Geräte.,survey
+msg_023,2026-05-29 09:14:00,Gibt es kurze Inhalte für Rücken im Heimtraining mit Stuhl?,support_message
+msg_024,2026-05-29 09:17:00,"Könnt ihr eine Variante für Schulter ergänzen, am liebsten mit Theraband?",content_rating
+msg_025,2026-05-29 09:20:00,Ich suche Hüfteübungen in einfacher Sprache und mit Miniband.,chat_feedback
+msg_026,2026-05-29 09:24:00,Bitte mehr Sprunggelenkübungen an der Wand.,app_feedback
+msg_027,2026-05-29 09:27:00,Ich hätte gern Nackenübungen anspruchsvoller auf der Matte.,survey
+msg_028,2026-05-29 09:31:00,Gibt es kurze Inhalte für allgemeines Heimtraining mit Handtuch?,support_message
+msg_029,2026-05-29 09:34:00,"Könnt ihr eine Variante für Knie ergänzen, am liebsten ohne Geräte?",content_rating
+msg_030,2026-05-29 09:37:00,Ich suche Rückenübungen in einfacher Sprache und mit Stuhl.,chat_feedback
+msg_031,2026-05-29 09:41:00,Bitte mehr Schulterübungen mit Theraband.,app_feedback
+msg_032,2026-05-29 09:44:00,Ich hätte gern Hüfteübungen für Fortgeschrittene mit Miniband.,survey
+msg_033,2026-05-29 09:47:00,Gibt es kurze Inhalte für Sprunggelenk im Heimtraining an der Wand?,support_message
+msg_034,2026-05-29 09:51:00,"Könnt ihr eine Variante für Nacken ergänzen, am liebsten auf der Matte?",content_rating
+msg_035,2026-05-29 09:54:00,Ich suche allgemeine Übungen in einfacher Sprache und mit Handtuch.,chat_feedback
+msg_036,2026-05-29 09:57:00,Bitte mehr Knieübungen ohne Geräte.,app_feedback
+msg_037,2026-05-29 10:01:00,Ich hätte gern Rückenübungen für Anfänger mit Stuhl.,survey
+msg_038,2026-05-29 10:04:00,Gibt es kurze Inhalte für Schulter im Heimtraining mit Theraband?,support_message
+msg_039,2026-05-29 10:07:00,"Könnt ihr eine Variante für Hüfte ergänzen, am liebsten mit Miniband?",content_rating
+msg_040,2026-05-29 10:11:00,Ich suche Sprunggelenkübungen in einfacher Sprache und an der Wand.,chat_feedback
+msg_041,2026-05-29 10:14:00,Bitte mehr Nackenübungen auf der Matte.,app_feedback
+msg_042,2026-05-29 10:17:00,Ich hätte gern allgemeine Übungen anspruchsvoller mit Handtuch.,survey
+msg_043,2026-05-29 10:21:00,Gibt es kurze Inhalte für Knie im Heimtraining ohne Geräte?,support_message
+msg_044,2026-05-29 10:24:00,"Könnt ihr eine Variante für Rücken ergänzen, am liebsten mit Stuhl?",content_rating
+msg_045,2026-05-29 10:27:00,Ich suche Schulterübungen in einfacher Sprache und mit Theraband.,chat_feedback
+msg_046,2026-05-29 10:31:00,Die Übung war für Anfänger zu schwer. Es ging um Knie.,app_feedback
+msg_047,2026-05-29 10:34:00,Das Video ist zu lang.,survey
+msg_048,2026-05-29 10:38:00,Die Erklärung war unklar. Es ging um Schulter.,support_message
+msg_049,2026-05-29 10:41:00,Die Reihenfolge der Übungen hat mich verwirrt.,content_rating
+msg_050,2026-05-29 10:44:00,Der Text ist zu knapp und hilft mir nicht. Es ging um Sprunggelenk.,chat_feedback
+msg_051,2026-05-29 10:48:00,Die Übung wirkt anspruchsvoller als angegeben.,app_feedback
+msg_052,2026-05-29 10:51:00,Das Tempo im Video ist zu schnell. Es ging um allgemeine.,survey
+msg_053,2026-05-29 10:54:00,Die Übung war für Anfänger zu schwer.,support_message
+msg_054,2026-05-29 10:58:00,Das Video ist zu lang. Es ging um Rücken.,content_rating
+msg_055,2026-05-29 11:01:00,Die Erklärung war unklar.,chat_feedback
+msg_056,2026-05-29 11:04:00,Die Reihenfolge der Übungen hat mich verwirrt. Es ging um Hüfte.,app_feedback
+msg_057,2026-05-29 11:08:00,Der Text ist zu knapp und hilft mir nicht.,survey
+msg_058,2026-05-29 11:11:00,Die Übung wirkt anspruchsvoller als angegeben. Es ging um Nacken.,support_message
+msg_059,2026-05-29 11:14:00,Das Tempo im Video ist zu schnell.,content_rating
+msg_060,2026-05-29 11:18:00,Die Übung war für Anfänger zu schwer. Es ging um Knie.,chat_feedback
+msg_061,2026-05-29 11:21:00,Das Video ist zu lang.,app_feedback
+msg_062,2026-05-29 11:24:00,Die Erklärung war unklar. Es ging um Schulter.,survey
+msg_063,2026-05-29 11:28:00,Die Reihenfolge der Übungen hat mich verwirrt.,support_message
+msg_064,2026-05-29 11:31:00,Der Text ist zu knapp und hilft mir nicht. Es ging um Sprunggelenk.,content_rating
+msg_065,2026-05-29 11:35:00,Die Übung wirkt anspruchsvoller als angegeben.,chat_feedback
+msg_066,2026-05-29 11:38:00,Das Tempo im Video ist zu schnell. Es ging um allgemeine.,app_feedback
+msg_067,2026-05-29 11:41:00,Die Übung war für Anfänger zu schwer.,survey
+msg_068,2026-05-29 11:45:00,Das Video ist zu lang. Es ging um Rücken.,support_message
+msg_069,2026-05-29 11:48:00,Die Erklärung war unklar.,content_rating
+msg_070,2026-05-29 11:51:00,Die Reihenfolge der Übungen hat mich verwirrt. Es ging um Hüfte.,chat_feedback
+msg_071,2026-05-29 11:55:00,Der Text ist zu knapp und hilft mir nicht.,app_feedback
+msg_072,2026-05-29 11:58:00,Die Übung wirkt anspruchsvoller als angegeben. Es ging um Nacken.,survey
+msg_073,2026-05-29 12:01:00,Das Tempo im Video ist zu schnell.,support_message
+msg_074,2026-05-29 12:05:00,Die Übung war für Anfänger zu schwer. Es ging um Knie.,content_rating
+msg_075,2026-05-29 12:08:00,Das Video ist zu lang.,chat_feedback
+msg_076,2026-05-29 12:11:00,Die Erklärung war unklar. Es ging um Schulter.,app_feedback
+msg_077,2026-05-29 12:15:00,Die Reihenfolge der Übungen hat mich verwirrt.,survey
+msg_078,2026-05-29 12:18:00,Der Text ist zu knapp und hilft mir nicht. Es ging um Sprunggelenk.,support_message
+msg_079,2026-05-29 12:21:00,Die Übung wirkt anspruchsvoller als angegeben.,content_rating
+msg_080,2026-05-29 12:25:00,Das Tempo im Video ist zu schnell. Es ging um allgemeine.,chat_feedback
+msg_081,2026-05-29 12:28:00,Das Video war sehr verständlich. Besonders bei Knie.,app_feedback
+msg_082,2026-05-29 12:32:00,Die kurzen Übungen gefallen mir gut.,survey
+msg_083,2026-05-29 12:35:00,Die Anleitung war angenehm ruhig.,support_message
+msg_084,2026-05-29 12:38:00,Ich konnte die Übung gut finden. Besonders bei Hüfte.,content_rating
+msg_085,2026-05-29 12:42:00,Die Darstellung ist klar und motivierend.,chat_feedback
+msg_086,2026-05-29 12:45:00,Das Video war sehr verständlich.,app_feedback
+msg_087,2026-05-29 12:48:00,Die kurzen Übungen gefallen mir gut. Besonders bei allgemeine.,survey
+msg_088,2026-05-29 12:52:00,Die Anleitung war angenehm ruhig.,support_message
+msg_089,2026-05-29 12:55:00,Ich konnte die Übung gut finden.,content_rating
+msg_090,2026-05-29 12:58:00,Die Darstellung ist klar und motivierend. Besonders bei Schulter.,chat_feedback
+msg_091,2026-05-29 13:02:00,Das Video war sehr verständlich.,app_feedback
+msg_092,2026-05-29 13:05:00,Die kurzen Übungen gefallen mir gut.,survey
+msg_093,2026-05-29 13:08:00,Die Anleitung war angenehm ruhig. Besonders bei Nacken.,support_message
+msg_094,2026-05-29 13:12:00,Ich konnte die Übung gut finden.,content_rating
+msg_095,2026-05-29 13:15:00,Die Darstellung ist klar und motivierend.,chat_feedback
+msg_096,2026-05-29 13:18:00,Das Video war sehr verständlich. Besonders bei Rücken.,app_feedback
+msg_097,2026-05-29 13:22:00,Die kurzen Übungen gefallen mir gut.,survey
+msg_098,2026-05-29 13:25:00,Die Anleitung war angenehm ruhig.,support_message
+msg_099,2026-05-29 13:28:00,Ich konnte die Übung gut finden. Besonders bei Sprunggelenk.,content_rating
+msg_100,2026-05-29 13:32:00,Die Darstellung ist klar und motivierend.,chat_feedback
+msg_101,2026-05-29 13:35:00,Das Video war sehr verständlich.,app_feedback
+msg_102,2026-05-29 13:39:00,Die kurzen Übungen gefallen mir gut. Besonders bei Knie.,survey
+msg_103,2026-05-29 13:42:00,Die Anleitung war angenehm ruhig.,support_message
+msg_104,2026-05-29 13:45:00,Ich konnte die Übung gut finden.,content_rating
+msg_105,2026-05-29 13:49:00,Die Darstellung ist klar und motivierend. Besonders bei Hüfte.,chat_feedback
+msg_106,2026-05-29 13:52:00,Ich bekomme Schmerzen bei der Übung.,app_feedback
+msg_107,2026-05-29 13:55:00,"Mir wird schwindelig, wenn ich die Übung starte.",survey
+msg_108,2026-05-29 13:59:00,"Ich bin unsicher, ob ich die Übung nach meiner OP machen darf.",support_message
+msg_109,2026-05-29 14:02:00,Bei der Schulterbewegung fühlt es sich instabil an.,content_rating
+msg_110,2026-05-29 14:05:00,Nach der Rückenübung habe ich stärkere Beschwerden.,chat_feedback
+msg_111,2026-05-29 14:09:00,Ich bekomme Schmerzen bei der Übung.,app_feedback
+msg_112,2026-05-29 14:12:00,"Mir wird schwindelig, wenn ich die Übung starte.",survey
+msg_113,2026-05-29 14:15:00,"Ich bin unsicher, ob ich die Übung nach meiner OP machen darf.",support_message
+msg_114,2026-05-29 14:19:00,Bei der Schulterbewegung fühlt es sich instabil an.,content_rating
+msg_115,2026-05-29 14:22:00,Nach der Rückenübung habe ich stärkere Beschwerden.,chat_feedback
+msg_116,2026-05-29 14:25:00,Ich bekomme Schmerzen bei der Übung.,app_feedback
+msg_117,2026-05-29 14:29:00,"Mir wird schwindelig, wenn ich die Übung starte.",survey
+msg_118,2026-05-29 14:32:00,"Ich bin unsicher, ob ich die Übung nach meiner OP machen darf.",support_message
+msg_119,2026-05-29 14:36:00,Bei der Schulterbewegung fühlt es sich instabil an.,content_rating
+msg_120,2026-05-29 14:39:00,Nach der Rückenübung habe ich stärkere Beschwerden.,chat_feedback
+msg_121,2026-05-29 14:42:00,Ich bekomme Schmerzen bei der Übung.,app_feedback
+msg_122,2026-05-29 14:46:00,"Mir wird schwindelig, wenn ich die Übung starte.",survey
+msg_123,2026-05-29 14:49:00,"Ich bin unsicher, ob ich die Übung nach meiner OP machen darf.",support_message
+msg_124,2026-05-29 14:52:00,Bei der Schulterbewegung fühlt es sich instabil an.,content_rating
+msg_125,2026-05-29 14:56:00,Nach der Rückenübung habe ich stärkere Beschwerden.,chat_feedback
+msg_126,2026-05-29 14:59:00,Die Knieübungen sind zu schwer und ich hätte gern leichtere Varianten ohne Geräte.,app_feedback
+msg_127,2026-05-29 15:02:00,"Die Erklärung zu Rücken ist unklar, bitte mehr Varianten mit Stuhl.",survey
+msg_128,2026-05-29 15:06:00,Die Schulterübungen sind zu schwer und ich hätte gern leichtere Varianten mit Theraband.,support_message
+msg_129,2026-05-29 15:09:00,"Die Erklärung zu Hüfte ist unklar, bitte mehr Varianten auf der Matte.",content_rating
+msg_130,2026-05-29 15:12:00,Die Sprunggelenkübungen sind zu schwer und ich hätte gern leichtere Varianten ohne Geräte.,chat_feedback
+msg_131,2026-05-29 15:16:00,"Die Erklärung zu Nacken ist unklar, bitte mehr Varianten mit Stuhl.",app_feedback
+msg_132,2026-05-29 15:19:00,Die allgemeine Übungen sind zu schwer und ich hätte gern leichtere Varianten mit Theraband.,survey
+msg_133,2026-05-29 15:22:00,"Die Erklärung zu Knie ist unklar, bitte mehr Varianten auf der Matte.",support_message
+msg_134,2026-05-29 15:26:00,Die Rückenübungen sind zu schwer und ich hätte gern leichtere Varianten ohne Geräte.,content_rating
+msg_135,2026-05-29 15:29:00,"Die Erklärung zu Schulter ist unklar, bitte mehr Varianten mit Stuhl.",chat_feedback
+msg_136,2026-05-29 15:33:00,Die Hüfteübungen sind zu schwer und ich hätte gern leichtere Varianten mit Theraband.,app_feedback
+msg_137,2026-05-29 15:36:00,"Die Erklärung zu Sprunggelenk ist unklar, bitte mehr Varianten auf der Matte.",survey
+msg_138,2026-05-29 15:39:00,Die Nackenübungen sind zu schwer und ich hätte gern leichtere Varianten ohne Geräte.,support_message
+msg_139,2026-05-29 15:43:00,"Die Erklärung zu allgemeine ist unklar, bitte mehr Varianten mit Stuhl.",content_rating
+msg_140,2026-05-29 15:46:00,Die Knieübungen sind zu schwer und ich hätte gern leichtere Varianten mit Theraband.,chat_feedback
+msg_141,2026-05-29 15:49:00,"Die Erklärung zu Rücken ist unklar, bitte mehr Varianten auf der Matte.",app_feedback
+msg_142,2026-05-29 15:53:00,Die Schulterübungen sind zu schwer und ich hätte gern leichtere Varianten ohne Geräte.,survey
+msg_143,2026-05-29 15:56:00,"Die Erklärung zu Hüfte ist unklar, bitte mehr Varianten mit Stuhl.",support_message
+msg_144,2026-05-29 15:59:00,Die Sprunggelenkübungen sind zu schwer und ich hätte gern leichtere Varianten mit Theraband.,content_rating
+msg_145,2026-05-29 16:03:00,"Die Erklärung zu Nacken ist unklar, bitte mehr Varianten auf der Matte.",chat_feedback
+msg_146,2026-05-29 16:06:00,"Ich finde die Übung für Rücken im Sitzen nicht, obwohl sie gut passen würde.",app_feedback
+msg_147,2026-05-29 16:09:00,"Die Suche zeigt mir Theraband-Übungen, obwohl ich ohne Equipment gesucht habe.",survey
+msg_148,2026-05-29 16:13:00,Der Filter Anfänger zeigt auch sehr schwere Übungen.,support_message
+msg_149,2026-05-29 16:16:00,"Die Übung ist als Knie markiert, wirkt aber eher wie Hüfte.",content_rating
+msg_150,2026-05-29 16:19:00,"Ich suche Schulter ohne Theraband, aber die Ergebnisse passen nicht.",chat_feedback
+msg_151,2026-05-29 16:23:00,"Ich finde die Übung für Rücken im Sitzen nicht, obwohl sie gut passen würde.",app_feedback
+msg_152,2026-05-29 16:26:00,"Die Suche zeigt mir Theraband-Übungen, obwohl ich ohne Equipment gesucht habe.",survey
+msg_153,2026-05-29 16:29:00,Der Filter Anfänger zeigt auch sehr schwere Übungen.,support_message
+msg_154,2026-05-29 16:33:00,"Die Übung ist als Knie markiert, wirkt aber eher wie Hüfte.",content_rating
+msg_155,2026-05-29 16:36:00,"Ich suche Schulter ohne Theraband, aber die Ergebnisse passen nicht.",chat_feedback
+msg_156,2026-05-29 16:40:00,"Ich finde die Übung für Rücken im Sitzen nicht, obwohl sie gut passen würde.",app_feedback
+msg_157,2026-05-29 16:43:00,"Die Suche zeigt mir Theraband-Übungen, obwohl ich ohne Equipment gesucht habe.",survey
+msg_158,2026-05-29 16:46:00,Der Filter Anfänger zeigt auch sehr schwere Übungen.,support_message
+msg_159,2026-05-29 16:50:00,"Die Übung ist als Knie markiert, wirkt aber eher wie Hüfte.",content_rating
+msg_160,2026-05-29 16:53:00,"Ich suche Schulter ohne Theraband, aber die Ergebnisse passen nicht.",chat_feedback
+msg_161,2026-05-29 16:56:00,Das Video lädt nicht.,app_feedback
+msg_162,2026-05-29 17:00:00,Der Ton fehlt.,survey
+msg_163,2026-05-29 17:03:00,Die Übung lässt sich nicht öffnen.,support_message
+msg_164,2026-05-29 17:06:00,Der Startbutton reagiert nicht.,content_rating
+msg_165,2026-05-29 17:10:00,Die App hängt beim Übungswechsel.,chat_feedback
+msg_166,2026-05-29 17:13:00,Das Video lädt nicht.,app_feedback
+msg_167,2026-05-29 17:16:00,Der Ton fehlt.,survey
+msg_168,2026-05-29 17:20:00,Die Übung lässt sich nicht öffnen.,support_message
+msg_169,2026-05-29 17:23:00,Der Startbutton reagiert nicht.,content_rating
+msg_170,2026-05-29 17:26:00,Die App hängt beim Übungswechsel.,chat_feedback
+msg_171,2026-05-29 17:30:00,Passt irgendwie nicht.,app_feedback
+msg_172,2026-05-29 17:33:00,Weiß nicht.,survey
+msg_173,2026-05-29 17:37:00,Anderes Thema.,support_message
+msg_174,2026-05-29 17:40:00,Ich wollte nur kurz etwas testen.,content_rating
+msg_175,2026-05-29 17:43:00,"Keine Ahnung, vielleicht später.",chat_feedback
+msg_176,2026-05-29 17:47:00,Passt irgendwie nicht.,app_feedback
+msg_177,2026-05-29 17:50:00,Weiß nicht.,survey
+msg_178,2026-05-29 17:53:00,Anderes Thema.,support_message
+msg_179,2026-05-29 17:57:00,Ich wollte nur kurz etwas testen.,content_rating
+msg_180,2026-05-29 18:00:00,"Keine Ahnung, vielleicht später.",chat_feedback

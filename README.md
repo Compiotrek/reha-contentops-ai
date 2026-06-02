@@ -8,8 +8,8 @@ Rehabilitation content teams need a structured way to triage user feedback, iden
 
 ## MVP Scope
 
-- Load synthetic German feedback messages.
-- Load a small normalized exercise database.
+- Load 180 synthetic German feedback messages.
+- Load a 50-record synthetic normalized exercise database.
 - Classify feedback into structured JSON with a mock keyword classifier or optional OpenAI-backed LLM classifier.
 - Route safety and low-confidence cases to human review.
 - Match content requests against existing approved exercises with placeholder metadata scoring or optional embedding-based RAG matching.
@@ -34,6 +34,8 @@ Rehabilitation content teams need a structured way to triage user feedback, iden
 The default version uses simple keyword rules and placeholder metadata scoring. The optional LLM classifier calls the OpenAI API, validates the returned JSON against the existing Pydantic schema, and falls back to `needs_review` if parsing or validation fails. The optional embedding matcher uses OpenAI embeddings to compare content requests against existing approved exercise records, then combines vector similarity with simple metadata fit checks.
 
 Embedding-based RAG matching is used only for content operations lookup. It does not validate clinical appropriateness, generate exercise instructions, or publish medical content.
+
+All dataset records are synthetic and demo-oriented: 50 exercise records, 180 feedback messages, and expected labels for evaluation checks. The data is not clinically validated and must not be treated as real patient data or real treatment guidance.
 
 If `OPENAI_MODEL` is not set, the LLM classifier falls back to `gpt-5.4-nano`, a low-cost model currently documented by OpenAI for simple high-volume tasks such as classification and data extraction.
 
@@ -155,6 +157,7 @@ RAG matching is conservative: strong matches can be marked as existing content, 
 ## Limitations
 
 - Synthetic data only.
+- Demo/evaluation data is not clinically validated.
 - Keyword-based mock classification by default.
 - Optional LLM classification depends on OpenAI API availability.
 - Embedding matching depends on OpenAI API availability.
