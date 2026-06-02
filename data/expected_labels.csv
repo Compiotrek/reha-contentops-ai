@@ -1,0 +1,11 @@
+message_id,expected_primary_label,expected_safety_flag
+msg_001,content_request,false
+msg_002,praise,false
+msg_003,safety_signal,true
+msg_004,content_request,false
+msg_005,criticism,false
+msg_006,content_request,false
+msg_007,safety_signal,true
+msg_008,metadata_issue,false
+msg_009,bug_or_access_problem,false
+msg_013,safety_signal,true

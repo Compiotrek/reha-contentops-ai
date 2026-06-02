@@ -1,0 +1,11 @@
+exercise_id,title,body_region,therapy_goal,difficulty,equipment,position,description,tags,review_status
+ex_001,Seated Knee Extension,knee,strength,beginner,chair,seated,Gentle knee extension from a seated position.,"knee;strength;seated;chair",approved
+ex_002,Wall Squat Hold,knee,strength,intermediate,none,standing,Controlled shallow wall squat hold for lower limb strength.,"knee;strength;standing",approved
+ex_003,Cat Cow Mobility,back,mobility,beginner,none,quadruped,Slow spinal flexion and extension for back mobility.,"back;mobility;no-equipment",approved
+ex_004,Seated Lumbar Flexion,back,mobility,beginner,chair,seated,Gentle seated lumbar flexion with controlled breathing.,"back;mobility;seated;chair",approved
+ex_005,Theraband External Rotation,shoulder,strength,intermediate,theraband,standing,Shoulder external rotation with light theraband resistance.,"shoulder;strength;theraband",approved
+ex_006,Supine Shoulder Flexion,shoulder,mobility,beginner,none,supine,Supported shoulder flexion while lying on the back.,"shoulder;mobility;supine",approved
+ex_007,Miniband Side Steps,general,strength,intermediate,miniband,standing,Lateral steps with miniband for hip and lower limb control.,"general;strength;miniband",approved
+ex_008,Chair Sit to Stand,general,strength,beginner,chair,seated,Controlled sit to stand movement using a chair.,"general;strength;chair",approved
+ex_009,Bird Dog,knee,stability,intermediate,none,quadruped,Alternating arm and leg reach for trunk and knee control.,"knee;stability;no-equipment",approved
+ex_010,Prone Back Extension,back,strength,advanced,none,prone,Back extension from prone position with controlled range.,"back;strength;advanced",approved
