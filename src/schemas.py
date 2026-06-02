@@ -52,6 +52,11 @@ class ClassifiedFeedback(BaseModel):
     summary: str
     confidence: float = Field(ge=0.0, le=1.0)
     routing: RoutingValue
+    classifier_source: str | None = None
+    abstained: bool | None = None
+    abstain_reason: str | None = None
+    safety_probability: float | None = None
+    top2_margin: float | None = None
 
 
 class MatchResult(BaseModel):

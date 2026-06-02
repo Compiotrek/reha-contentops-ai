@@ -15,11 +15,14 @@ def generate_daily_report(
     label_counts: Counter[str] = Counter()
     routing_counts: Counter[str] = Counter()
     match_status_counts: Counter[str] = Counter()
+    classifier_source_counts: Counter[str] = Counter()
 
     for item in processed_items:
         label_counts.update(item.classification.labels)
         routing_counts.update([item.decision.routing])
         match_status_counts.update([item.decision.match_status])
+        if item.classification.classifier_source:
+            classifier_source_counts.update([item.classification.classifier_source])
 
     content_requests = [
         item.message.message_id
@@ -51,6 +54,7 @@ def generate_daily_report(
         f"- track_only: {match_status_counts['track_only']}",
         f"- safety_review: {match_status_counts['safety_review']}",
         f"- needs_review: {match_status_counts['needs_review']}",
+        *_hybrid_overview_lines(classifier, classifier_source_counts),
         "",
         "## Count by Label",
         *_format_counter(label_counts),
@@ -90,6 +94,18 @@ def _report_note(classifier: str | None) -> str:
     if classifier == "llm":
         return "This report uses deterministic counts from processed LLM-classified data."
     return "This report uses deterministic counts from processed pipeline data."
+
+
+def _hybrid_overview_lines(
+    classifier: str | None, classifier_source_counts: Counter[str]
+) -> list[str]:
+    if classifier != "hybrid":
+        return []
+    return [
+        f"- hybrid_llm_processed: {classifier_source_counts['hybrid_llm']}",
+        f"- hybrid_ml_processed: {classifier_source_counts['hybrid_ml']}",
+        f"- ml_abstained: {classifier_source_counts['ml_abstain']}",
+    ]
 
 
 def _format_ids(message_ids: list[str]) -> list[str]:

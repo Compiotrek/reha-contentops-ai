@@ -4,7 +4,12 @@ from pathlib import Path
 
 import pandas as pd
 
-from src.classify import classify_feedback_llm, classify_feedback_mock
+from src.classify import (
+    classify_feedback_hybrid,
+    classify_feedback_llm,
+    classify_feedback_ml,
+    classify_feedback_mock,
+)
 from src.decide import apply_routing, decide_match_status
 from src.load_data import load_exercises, load_feedback_messages
 from src.match import match_exercises_embeddings, match_exercises_placeholder
@@ -21,12 +26,13 @@ def process_feedback(
     classifier: str = "mock",
     matcher: str = "placeholder",
     limit: int | None = None,
+    hybrid_threshold: float = 0.85,
 ) -> list[ProcessedFeedback]:
     feedback_messages = load_feedback_messages(str(DATA_DIR / "feedback_messages.csv"))
     if limit is not None:
         feedback_messages = feedback_messages[:limit]
     exercises = load_exercises(str(DATA_DIR / "exercises.csv"))
-    classify = _get_classifier(classifier)
+    classify = _get_classifier(classifier, hybrid_threshold=hybrid_threshold)
     match = _get_matcher(matcher)
 
     return [
@@ -73,11 +79,17 @@ def process_single_feedback(
     )
 
 
-def _get_classifier(classifier: str):
+def _get_classifier(classifier: str, hybrid_threshold: float = 0.85):
     if classifier == "mock":
         return classify_feedback_mock
     if classifier == "llm":
         return classify_feedback_llm
+    if classifier == "ml":
+        return classify_feedback_ml
+    if classifier == "hybrid":
+        return lambda message: classify_feedback_hybrid(
+            message, threshold=hybrid_threshold
+        )
     raise ValueError(f"Unsupported classifier: {classifier}")
 
 
@@ -163,7 +175,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run the Reha ContentOps AI pipeline.")
     parser.add_argument(
         "--classifier",
-        choices=["mock", "llm"],
+        choices=["mock", "llm", "ml", "hybrid"],
         default="mock",
         help="Classifier backend to use. Defaults to mock.",
     )
@@ -179,6 +191,12 @@ def parse_args() -> argparse.Namespace:
         default="placeholder",
         help="Matcher backend to use. Defaults to placeholder.",
     )
+    parser.add_argument(
+        "--hybrid-threshold",
+        type=float,
+        default=0.85,
+        help="Auto-accept confidence threshold for hybrid ML predictions.",
+    )
     return parser.parse_args()
 
 
@@ -188,6 +206,7 @@ def main() -> None:
         classifier=args.classifier,
         matcher=args.matcher,
         limit=args.limit,
+        hybrid_threshold=args.hybrid_threshold,
     )
     write_outputs(processed_items, classifier=args.classifier, matcher=args.matcher)
     print(

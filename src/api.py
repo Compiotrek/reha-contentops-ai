@@ -5,12 +5,13 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
+from src.classify import CLASSIFIER_MODEL_PATH
 from src.load_data import load_exercises
 from src.process import DATA_DIR, process_single_feedback
 from src.schemas import Exercise, FeedbackMessage, ProcessedFeedback
 
 
-ALLOWED_CLASSIFIERS = {"mock", "llm"}
+ALLOWED_CLASSIFIERS = {"mock", "llm", "ml", "hybrid"}
 ALLOWED_MATCHERS = {"placeholder", "embeddings"}
 
 app = FastAPI(title="Reha ContentOps AI")
@@ -51,7 +52,7 @@ def _validate_modes(classifier: str, matcher: str) -> None:
     if classifier not in ALLOWED_CLASSIFIERS:
         raise HTTPException(
             status_code=400,
-            detail="Invalid classifier. Allowed values: mock, llm.",
+            detail="Invalid classifier. Allowed values: mock, llm, ml, hybrid.",
         )
     if matcher not in ALLOWED_MATCHERS:
         raise HTTPException(
@@ -61,6 +62,11 @@ def _validate_modes(classifier: str, matcher: str) -> None:
 
 
 def _validate_openai_requirements(classifier: str, matcher: str) -> None:
+    if classifier in {"ml", "hybrid"} and not CLASSIFIER_MODEL_PATH.exists():
+        raise HTTPException(
+            status_code=400,
+            detail="ML classifier model not found. Run python -m src.train_ml_classifier first.",
+        )
     if classifier != "llm" and matcher != "embeddings":
         return
     load_dotenv()

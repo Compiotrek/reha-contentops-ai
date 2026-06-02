@@ -10,7 +10,7 @@ Rehabilitation content teams need a structured way to triage user feedback, iden
 
 - Load 180 synthetic German feedback messages.
 - Load a 50-record synthetic normalized exercise database.
-- Classify feedback into structured JSON with a mock keyword classifier or optional OpenAI-backed LLM classifier.
+- Classify feedback into structured JSON with mock, LLM, ML, or hybrid ML+LLM classifier modes.
 - Route safety and low-confidence cases to human review.
 - Match content requests against existing approved exercises with placeholder metadata scoring or optional embedding-based RAG matching.
 - Generate review queue outputs.
@@ -23,6 +23,8 @@ Rehabilitation content teams need a structured way to triage user feedback, iden
 - `src/schemas.py`: Pydantic data contracts.
 - `src/load_data.py`: CSV loading helpers.
 - `src/classify.py`: deterministic mock classifier.
+- `src/train_ml_classifier.py`: local TF-IDF classifier training.
+- `src/evaluate_ml_classifier.py`: illustrative ML evaluation report generation.
 - `src/decide.py`: routing and match-status decision logic.
 - `src/match.py`: placeholder and embedding-based exercise matching.
 - `src/report.py`: deterministic Markdown report generation.
@@ -31,7 +33,7 @@ Rehabilitation content teams need a structured way to triage user feedback, iden
 
 ## Current Implementation
 
-The default version uses simple keyword rules and placeholder metadata scoring. The optional LLM classifier calls the OpenAI API, validates the returned JSON against the existing Pydantic schema, and falls back to `needs_review` if parsing or validation fails. The optional embedding matcher uses OpenAI embeddings to compare content requests against existing approved exercise records, then combines vector similarity with simple metadata fit checks.
+The default version uses simple keyword rules and placeholder metadata scoring. The optional LLM classifier calls the OpenAI API, validates the returned JSON against the existing Pydantic schema, and falls back to `needs_review` if parsing or validation fails. The experimental local ML classifier uses TF-IDF plus one-vs-rest logistic regression trained from synthetic expected labels. The optional embedding matcher uses OpenAI embeddings to compare content requests against existing approved exercise records, then combines vector similarity with simple metadata fit checks.
 
 Embedding-based RAG matching is used only for content operations lookup. It does not validate clinical appropriateness, generate exercise instructions, or publish medical content.
 
@@ -91,6 +93,38 @@ python -m src.process --classifier llm --matcher embeddings --limit 5
 
 Use `--limit` during testing to control API cost.
 
+## Hybrid ML + LLM Classification
+
+The local ML classifier is a cheap cost-control layer. It uses TF-IDF features with one-vs-rest logistic regression and a separate binary safety classifier. It only auto-accepts high-confidence predictions with a sufficient top-2 margin. Low-confidence or ambiguous ML outputs abstain and route to review in `ml` mode.
+
+In `hybrid` mode, the ML classifier runs first. Safety signals route directly to safety review. High-confidence ML predictions are accepted. Uncertain cases fall back to the LLM classifier. This is not a medical classifier and does not validate clinical appropriateness.
+
+With limited synthetic data, ML evaluation is illustrative and experimental. Do not overinterpret the metrics.
+
+Train the local model:
+
+```bash
+python -m src.train_ml_classifier
+```
+
+Generate an illustrative evaluation report:
+
+```bash
+python -m src.evaluate_ml_classifier
+```
+
+Run ML-only mode:
+
+```bash
+python -m src.process --classifier ml --matcher placeholder --limit 5
+```
+
+Run hybrid mode with embedding matching:
+
+```bash
+python -m src.process --classifier hybrid --matcher embeddings --limit 5
+```
+
 ## Embedding Cache
 
 Exercise embeddings are cached locally in `outputs/exercise_embeddings.json`. The cache is reused when the embedding model, exercise ID, and searchable exercise text hash match. Only missing or changed exercise embeddings are regenerated.
@@ -143,6 +177,7 @@ The pipeline writes:
 - `outputs/review_queue.csv`: safety and low-confidence cases for human review.
 - `outputs/daily_report.md`: deterministic content operations summary.
 - `outputs/exercise_embeddings.json`: local embedding cache for approved exercise records when embedding matching is used.
+- `outputs/ml_evaluation.md`: illustrative local ML classifier evaluation report.
 
 Generated output files are ignored by Git.
 
@@ -154,11 +189,14 @@ The LLM classifier is constrained to return structured JSON and must not provide
 
 RAG matching is conservative: strong matches can be marked as existing content, mismatched but similar items become possible duplicates, and low-similarity single requests are tracked only. A single request is not treated as a content gap candidate.
 
+The ML classifier is also conservative: uncertain predictions abstain, hybrid mode falls back to the LLM where available, and safety signals route to review.
+
 ## Limitations
 
 - Synthetic data only.
 - Demo/evaluation data is not clinically validated.
 - Keyword-based mock classification by default.
+- Experimental ML classifier trained only on synthetic labels.
 - Optional LLM classification depends on OpenAI API availability.
 - Embedding matching depends on OpenAI API availability.
 - No clinical validation.
@@ -167,7 +205,6 @@ RAG matching is conservative: strong matches can be marked as existing content, 
 ## Next Steps
 
 - Add validation against `data/expected_labels.csv`.
-- Add a cost-aware local ML pre-classifier once enough labeled feedback data exists. It is intentionally not part of this MVP because the current synthetic labeled dataset is too small for a stable model.
 - Add repeated-request clustering before any content gap workflow.
 - Add reviewer-facing output states and audit logs.
 - Expand synthetic test cases and report checks.

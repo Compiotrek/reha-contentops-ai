@@ -2,15 +2,28 @@ import json
 import os
 from pathlib import Path
 
+import joblib
 from dotenv import load_dotenv
 from pydantic import ValidationError
 
 from src.schemas import ClassifiedFeedback, FeedbackMessage
+from src.train_ml_classifier import DEFAULT_THRESHOLDS
 
 
 ROOT = Path(__file__).resolve().parents[1]
 CLASSIFIER_PROMPT_PATH = ROOT / "prompts" / "classifier_prompt.md"
 DEFAULT_OPENAI_MODEL = "gpt-5.4-nano"
+CLASSIFIER_MODEL_PATH = ROOT / "models" / "ml_classifier.joblib"
+ML_AUTO_ACCEPT_CONFIDENCE = 0.85
+ML_AUTO_ACCEPT_MARGIN = 0.15
+ML_SAFETY_THRESHOLD = 0.35
+MEANINGFUL_LABELS = {
+    "content_request",
+    "criticism",
+    "praise",
+    "bug_or_access_problem",
+    "metadata_issue",
+}
 DEFAULT_CLASSIFIER_PROMPT = """
 Classify German rehabilitation content feedback into one strict JSON object.
 Use the existing schema fields exactly. Use only allowed labels:
@@ -27,6 +40,10 @@ CRITICISM_KEYWORDS = ["schwer", "zu lang", "nervt", "problem"]
 PRAISE_KEYWORDS = ["super", "gut", "verständlich"]
 BUG_KEYWORDS = ["startbutton", "reagiert nicht", "app"]
 METADATA_KEYWORDS = ["tag", "steht", "passt nicht", "anfänger"]
+
+
+class MLClassifierModelNotFoundError(FileNotFoundError):
+    """Raised when the local ML classifier artifact has not been trained yet."""
 
 
 def classify_feedback_mock(message: FeedbackMessage) -> ClassifiedFeedback:
@@ -72,7 +89,39 @@ def classify_feedback_mock(message: FeedbackMessage) -> ClassifiedFeedback:
         summary=_build_summary(labels, message.message_id),
         confidence=confidence,
         routing="needs_review",
+        classifier_source="mock",
+        abstained=False,
     )
+
+
+def classify_feedback_ml(message: FeedbackMessage) -> ClassifiedFeedback:
+    artifact = _load_ml_artifact()
+    return _classify_feedback_ml_with_artifact(message, artifact)
+
+
+def classify_feedback_hybrid(
+    message: FeedbackMessage, threshold: float = ML_AUTO_ACCEPT_CONFIDENCE
+) -> ClassifiedFeedback:
+    ml_result = classify_feedback_ml(message)
+    if ml_result.routing == "safety_review":
+        ml_result.classifier_source = "hybrid_ml"
+        return ml_result
+    if _ml_auto_accepted(ml_result, threshold):
+        ml_result.classifier_source = "hybrid_ml"
+        return ml_result
+
+    llm_result = classify_feedback_llm(message)
+    if llm_result.confidence > 0.0 or llm_result.summary != "LLM classification failed validation.":
+        llm_result.classifier_source = "hybrid_llm"
+        return llm_result
+
+    ml_result.routing = "needs_review"
+    ml_result.classifier_source = "ml_abstain"
+    ml_result.abstained = True
+    ml_result.abstain_reason = (
+        "ML classifier abstained and LLM fallback was unavailable or failed."
+    )
+    return ml_result
 
 
 def classify_feedback_llm(message: FeedbackMessage) -> ClassifiedFeedback:
@@ -101,6 +150,8 @@ def classify_feedback_llm(message: FeedbackMessage) -> ClassifiedFeedback:
             payload = _parse_json_object(raw_response)
             classified = ClassifiedFeedback(**payload)
             _validate_llm_classification(classified, message)
+            classified.classifier_source = "llm"
+            classified.abstained = False
             return classified
         except (json.JSONDecodeError, KeyError, TypeError, ValueError, ValidationError) as exc:
             last_error = exc
@@ -193,7 +244,137 @@ def _llm_fallback_classification(
         summary="LLM classification failed validation.",
         confidence=0.0,
         routing="needs_review",
+        classifier_source="llm",
+        abstained=True,
+        abstain_reason="LLM classification failed validation.",
     )
+
+
+def _load_ml_artifact() -> dict:
+    if not CLASSIFIER_MODEL_PATH.exists():
+        raise MLClassifierModelNotFoundError(
+            "ML classifier model not found. Run python -m src.train_ml_classifier first."
+        )
+    return joblib.load(CLASSIFIER_MODEL_PATH)
+
+
+def _classify_feedback_ml_with_artifact(
+    message: FeedbackMessage, artifact: dict
+) -> ClassifiedFeedback:
+    features = artifact["vectorizer"].transform([message.user_message])
+    label_probs = _predict_label_probabilities(artifact, features)
+    safety_probability = _predict_safety_probability(artifact, features)
+    thresholds = {**DEFAULT_THRESHOLDS, **artifact.get("thresholds", {})}
+
+    max_confidence = max(label_probs.values()) if label_probs else 0.0
+    top2_margin = _top2_margin(list(label_probs.values()))
+    predicted_labels = [
+        label
+        for label, probability in label_probs.items()
+        if probability >= thresholds.get(label, 0.60)
+    ]
+
+    if safety_probability >= ML_SAFETY_THRESHOLD:
+        labels = _dedupe_labels(["safety_signal", *predicted_labels])
+        return ClassifiedFeedback(
+            message_id=message.message_id,
+            user_message=message.user_message,
+            labels=labels,
+            safety_flag=True,
+            evidence_quote=message.user_message[:160],
+            summary="ML classifier detected a possible safety signal.",
+            confidence=round(max(max_confidence, safety_probability), 3),
+            routing="safety_review",
+            classifier_source="ml",
+            abstained=False,
+            safety_probability=round(safety_probability, 3),
+            top2_margin=round(top2_margin, 3),
+        )
+
+    if not predicted_labels:
+        predicted_labels = ["unclear"]
+
+    accepted = (
+        max_confidence >= ML_AUTO_ACCEPT_CONFIDENCE
+        and top2_margin >= ML_AUTO_ACCEPT_MARGIN
+        and any(label in MEANINGFUL_LABELS for label in predicted_labels)
+    )
+    if accepted:
+        return ClassifiedFeedback(
+            message_id=message.message_id,
+            user_message=message.user_message,
+            labels=predicted_labels,
+            safety_flag=False,
+            evidence_quote=message.user_message[:160],
+            summary="ML classifier auto-accepted a high-confidence prediction.",
+            confidence=round(max_confidence, 3),
+            routing="process",
+            classifier_source="ml",
+            abstained=False,
+            safety_probability=round(safety_probability, 3),
+            top2_margin=round(top2_margin, 3),
+        )
+
+    return ClassifiedFeedback(
+        message_id=message.message_id,
+        user_message=message.user_message,
+        labels=predicted_labels,
+        safety_flag=False,
+        evidence_quote=message.user_message[:160],
+        summary="ML classifier abstained due to low confidence or low top-2 margin.",
+        confidence=round(max_confidence, 3),
+        routing="needs_review",
+        classifier_source="ml_abstain",
+        abstained=True,
+        abstain_reason="low confidence or low top-2 margin",
+        safety_probability=round(safety_probability, 3),
+        top2_margin=round(top2_margin, 3),
+    )
+
+
+def _predict_label_probabilities(artifact: dict, features) -> dict[str, float]:
+    classifier = artifact["multilabel_classifier"]
+    label_binarizer = artifact["label_binarizer"]
+    probabilities = classifier.predict_proba(features)[0]
+    return {
+        label: float(probability)
+        for label, probability in zip(label_binarizer.classes_, probabilities)
+    }
+
+
+def _predict_safety_probability(artifact: dict, features) -> float:
+    classifier = artifact["safety_classifier"]
+    if len(classifier.classes_) == 1:
+        return float(classifier.classes_[0])
+    class_index = list(classifier.classes_).index(1)
+    return float(classifier.predict_proba(features)[0][class_index])
+
+
+def _top2_margin(probabilities: list[float]) -> float:
+    if not probabilities:
+        return 0.0
+    sorted_probs = sorted(probabilities, reverse=True)
+    if len(sorted_probs) == 1:
+        return sorted_probs[0]
+    return sorted_probs[0] - sorted_probs[1]
+
+
+def _ml_auto_accepted(result: ClassifiedFeedback, threshold: float) -> bool:
+    return (
+        result.routing == "process"
+        and result.abstained is False
+        and result.confidence >= threshold
+        and (result.top2_margin or 0.0) >= ML_AUTO_ACCEPT_MARGIN
+        and any(label in MEANINGFUL_LABELS for label in result.labels)
+    )
+
+
+def _dedupe_labels(labels: list[str]) -> list[str]:
+    deduped: list[str] = []
+    for label in labels:
+        if label not in deduped:
+            deduped.append(label)
+    return deduped
 
 
 def _contains_any(text: str, keywords: list[str]) -> bool:

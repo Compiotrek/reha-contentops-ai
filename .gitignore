@@ -6,6 +6,7 @@ outputs/*.json
 outputs/*.csv
 outputs/*.md
 prompts/
+models/*.joblib
 .pytest_cache/
 build/
 dist/
