@@ -11,6 +11,15 @@ from src.schemas import ClassifiedFeedback, FeedbackMessage
 ROOT = Path(__file__).resolve().parents[1]
 CLASSIFIER_PROMPT_PATH = ROOT / "prompts" / "classifier_prompt.md"
 DEFAULT_OPENAI_MODEL = "gpt-5.4-nano"
+DEFAULT_CLASSIFIER_PROMPT = """
+Classify German rehabilitation content feedback into one strict JSON object.
+Use the existing schema fields exactly. Use only allowed labels:
+content_request, criticism, praise, safety_signal, bug_or_access_problem,
+metadata_issue, unclear, other. Include an evidence_quote copied exactly from
+the user message. Do not provide medical advice. If the message mentions pain,
+dizziness, unsafe movement, or post-operative uncertainty, set safety_flag true
+and route to safety_review.
+""".strip()
 
 SAFETY_KEYWORDS = ["pain", "schmerzen", "schwindelig", "unsicher", "op darf"]
 REQUEST_KEYWORDS = ["mehr", "hätte gern", "bitte", "ich brauche"]
@@ -79,7 +88,7 @@ def classify_feedback_llm(message: FeedbackMessage) -> ClassifiedFeedback:
     if not api_key:
         return _llm_fallback_classification(message)
 
-    prompt = CLASSIFIER_PROMPT_PATH.read_text(encoding="utf-8")
+    prompt = _load_classifier_prompt()
     last_error: Exception | None = None
     for _ in range(2):
         try:
@@ -133,6 +142,12 @@ def _call_openai_classifier(
     if not content:
         raise ValueError("OpenAI response did not contain message content.")
     return content
+
+
+def _load_classifier_prompt() -> str:
+    if CLASSIFIER_PROMPT_PATH.exists():
+        return CLASSIFIER_PROMPT_PATH.read_text(encoding="utf-8")
+    return DEFAULT_CLASSIFIER_PROMPT
 
 
 def _parse_json_object(raw_response: str) -> dict:

@@ -8,6 +8,7 @@ def generate_daily_report(
     processed_items: list[ProcessedFeedback],
     output_path: str,
     classifier: str | None = None,
+    matcher: str | None = None,
 ) -> None:
     """Generate a deterministic Markdown report from processed pipeline data."""
     total_messages = len(processed_items)
@@ -41,7 +42,15 @@ def generate_daily_report(
         "",
         _report_note(classifier),
         "",
+        f"- Classifier mode: {classifier or 'unknown'}",
+        f"- Matcher mode: {matcher or 'unknown'}",
         f"- Total messages: {total_messages}",
+        f"- existing_content: {match_status_counts['existing_content']}",
+        f"- possible_duplicate: {match_status_counts['possible_duplicate']}",
+        f"- metadata_issue: {match_status_counts['metadata_issue']}",
+        f"- track_only: {match_status_counts['track_only']}",
+        f"- safety_review: {match_status_counts['safety_review']}",
+        f"- needs_review: {match_status_counts['needs_review']}",
         "",
         "## Count by Label",
         *_format_counter(label_counts),

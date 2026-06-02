@@ -56,13 +56,19 @@ class MatchResult(BaseModel):
     exercise_id: str
     title: str
     score: float
-    reasons: list[str]
+    reasons: list[str] = Field(default_factory=list)
+    vector_similarity: float | None = None
+    metadata_fit_score: float | None = None
+    final_score: float | None = None
+    metadata_mismatches: list[str] = Field(default_factory=list)
+    reason: str | None = None
 
 
 class DecisionResult(BaseModel):
     routing: RoutingValue
     match_status: str
     reason: str
+    final_action: str
 
 
 class ProcessedFeedback(BaseModel):
@@ -70,3 +76,8 @@ class ProcessedFeedback(BaseModel):
     classification: ClassifiedFeedback
     matches: list[MatchResult]
     decision: DecisionResult
+    matcher_mode: str = "placeholder"
+    top_matches: list[MatchResult] = Field(default_factory=list)
+    match_status: str
+    decision_reason: str
+    final_action: str
