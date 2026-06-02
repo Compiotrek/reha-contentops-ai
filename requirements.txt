@@ -3,4 +3,5 @@ pydantic
 python-dotenv
 scikit-learn
 numpy
+openai
 pytest

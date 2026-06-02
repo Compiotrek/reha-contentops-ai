@@ -1,5 +1,16 @@
+import json
+import os
+from pathlib import Path
+
+from dotenv import load_dotenv
+from pydantic import ValidationError
+
 from src.schemas import ClassifiedFeedback, FeedbackMessage
 
+
+ROOT = Path(__file__).resolve().parents[1]
+CLASSIFIER_PROMPT_PATH = ROOT / "prompts" / "classifier_prompt.md"
+DEFAULT_OPENAI_MODEL = "gpt-5.4-nano"
 
 SAFETY_KEYWORDS = ["pain", "schmerzen", "schwindelig", "unsicher", "op darf"]
 REQUEST_KEYWORDS = ["mehr", "hätte gern", "bitte", "ich brauche"]
@@ -51,6 +62,121 @@ def classify_feedback_mock(message: FeedbackMessage) -> ClassifiedFeedback:
         evidence_quote=text[:160],
         summary=_build_summary(labels, message.message_id),
         confidence=confidence,
+        routing="needs_review",
+    )
+
+
+def classify_feedback_llm(message: FeedbackMessage) -> ClassifiedFeedback:
+    """Classify feedback with the OpenAI API and validate the JSON response.
+
+    The mock classifier remains the default pipeline path. This LLM classifier is
+    optional, schema-validated, and falls back to human review on failures.
+    """
+    load_dotenv()
+    api_key = os.getenv("OPENAI_API_KEY")
+    model = os.getenv("OPENAI_MODEL") or DEFAULT_OPENAI_MODEL
+
+    if not api_key:
+        return _llm_fallback_classification(message)
+
+    prompt = CLASSIFIER_PROMPT_PATH.read_text(encoding="utf-8")
+    last_error: Exception | None = None
+    for _ in range(2):
+        try:
+            raw_response = _call_openai_classifier(
+                api_key=api_key,
+                model=model,
+                system_prompt=prompt,
+                message=message,
+            )
+            payload = _parse_json_object(raw_response)
+            classified = ClassifiedFeedback(**payload)
+            _validate_llm_classification(classified, message)
+            return classified
+        except (json.JSONDecodeError, KeyError, TypeError, ValueError, ValidationError) as exc:
+            last_error = exc
+        except Exception as exc:
+            last_error = exc
+            break
+
+    return _llm_fallback_classification(message, last_error)
+
+
+def _call_openai_classifier(
+    api_key: str,
+    model: str,
+    system_prompt: str,
+    message: FeedbackMessage,
+) -> str:
+    from openai import OpenAI
+
+    client = OpenAI(api_key=api_key)
+    user_payload = {
+        "message_id": message.message_id,
+        "user_message": message.user_message,
+    }
+    completion = client.chat.completions.create(
+        model=model,
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {
+                "role": "user",
+                "content": (
+                    "Classify this German rehabilitation feedback. "
+                    f"Return only strict JSON:\n{json.dumps(user_payload, ensure_ascii=False)}"
+                ),
+            },
+        ],
+        response_format={"type": "json_object"},
+    )
+    content = completion.choices[0].message.content
+    if not content:
+        raise ValueError("OpenAI response did not contain message content.")
+    return content
+
+
+def _parse_json_object(raw_response: str) -> dict:
+    cleaned = raw_response.strip()
+    if cleaned.startswith("```"):
+        cleaned = cleaned.strip("`").strip()
+        if cleaned.startswith("json"):
+            cleaned = cleaned[4:].strip()
+    parsed = json.loads(cleaned)
+    if not isinstance(parsed, dict):
+        raise TypeError("LLM response must be a JSON object.")
+    return parsed
+
+
+def _validate_llm_classification(
+    classified: ClassifiedFeedback, message: FeedbackMessage
+) -> None:
+    if classified.message_id != message.message_id:
+        raise ValueError("LLM response changed message_id.")
+    if classified.user_message != message.user_message:
+        raise ValueError("LLM response changed user_message.")
+    if not classified.evidence_quote:
+        raise ValueError("LLM evidence_quote must not be empty.")
+    if classified.evidence_quote not in message.user_message:
+        raise ValueError("LLM evidence_quote must be copied from the user message.")
+
+
+def _llm_fallback_classification(
+    message: FeedbackMessage, error: Exception | None = None
+) -> ClassifiedFeedback:
+    return ClassifiedFeedback(
+        message_id=message.message_id,
+        user_message=message.user_message,
+        labels=["unclear"],
+        body_region=None,
+        therapy_goal=None,
+        difficulty_requested=None,
+        equipment=None,
+        position=None,
+        sentiment=None,
+        safety_flag=False,
+        evidence_quote=message.user_message[:120],
+        summary="LLM classification failed validation.",
+        confidence=0.0,
         routing="needs_review",
     )
 

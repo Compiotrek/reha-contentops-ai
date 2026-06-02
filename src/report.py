@@ -4,7 +4,11 @@ from pathlib import Path
 from src.schemas import ProcessedFeedback
 
 
-def generate_daily_report(processed_items: list[ProcessedFeedback], output_path: str) -> None:
+def generate_daily_report(
+    processed_items: list[ProcessedFeedback],
+    output_path: str,
+    classifier: str | None = None,
+) -> None:
     """Generate a deterministic Markdown report from processed pipeline data."""
     total_messages = len(processed_items)
     label_counts: Counter[str] = Counter()
@@ -35,7 +39,7 @@ def generate_daily_report(processed_items: list[ProcessedFeedback], output_path:
     lines = [
         "# Daily Content Ops Report",
         "",
-        "This report uses only deterministic counts from processed mock pipeline data.",
+        _report_note(classifier),
         "",
         f"- Total messages: {total_messages}",
         "",
@@ -69,6 +73,14 @@ def _format_counter(counter: Counter[str]) -> list[str]:
     if not counter:
         return ["- None: 0"]
     return [f"- {key}: {counter[key]}" for key in sorted(counter)]
+
+
+def _report_note(classifier: str | None) -> str:
+    if classifier == "mock":
+        return "This report uses deterministic counts from processed mock-classified data."
+    if classifier == "llm":
+        return "This report uses deterministic counts from processed LLM-classified data."
+    return "This report uses deterministic counts from processed pipeline data."
 
 
 def _format_ids(message_ids: list[str]) -> list[str]:

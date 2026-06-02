@@ -1,9 +1,10 @@
+import argparse
 import json
 from pathlib import Path
 
 import pandas as pd
 
-from src.classify import classify_feedback_mock
+from src.classify import classify_feedback_llm, classify_feedback_mock
 from src.decide import apply_routing, decide_match_status
 from src.load_data import load_exercises, load_feedback_messages
 from src.match import match_exercises_placeholder
@@ -16,13 +17,18 @@ DATA_DIR = ROOT / "data"
 OUTPUT_DIR = ROOT / "outputs"
 
 
-def process_feedback() -> list[ProcessedFeedback]:
+def process_feedback(
+    classifier: str = "mock", limit: int | None = None
+) -> list[ProcessedFeedback]:
     feedback_messages = load_feedback_messages(str(DATA_DIR / "feedback_messages.csv"))
+    if limit is not None:
+        feedback_messages = feedback_messages[:limit]
     exercises = load_exercises(str(DATA_DIR / "exercises.csv"))
+    classify = _get_classifier(classifier)
 
     processed_items: list[ProcessedFeedback] = []
     for message in feedback_messages:
-        classified = classify_feedback_mock(message)
+        classified = classify(message)
         classified.routing = apply_routing(classified)
         matches = match_exercises_placeholder(classified, exercises)
         decision = decide_match_status(classified, matches)
@@ -39,7 +45,17 @@ def process_feedback() -> list[ProcessedFeedback]:
     return processed_items
 
 
-def write_outputs(processed_items: list[ProcessedFeedback]) -> None:
+def _get_classifier(classifier: str):
+    if classifier == "mock":
+        return classify_feedback_mock
+    if classifier == "llm":
+        return classify_feedback_llm
+    raise ValueError(f"Unsupported classifier: {classifier}")
+
+
+def write_outputs(
+    processed_items: list[ProcessedFeedback], classifier: str | None = None
+) -> None:
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
     processed_path = OUTPUT_DIR / "processed_feedback.json"
@@ -65,7 +81,11 @@ def write_outputs(processed_items: list[ProcessedFeedback]) -> None:
             )
 
     pd.DataFrame(review_rows).to_csv(OUTPUT_DIR / "review_queue.csv", index=False)
-    generate_daily_report(processed_items, str(OUTPUT_DIR / "daily_report.md"))
+    generate_daily_report(
+        processed_items,
+        str(OUTPUT_DIR / "daily_report.md"),
+        classifier=classifier,
+    )
 
 
 def _model_dump(item: ProcessedFeedback) -> dict:
@@ -74,10 +94,28 @@ def _model_dump(item: ProcessedFeedback) -> dict:
     return item.dict()
 
 
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Run the Reha ContentOps AI pipeline.")
+    parser.add_argument(
+        "--classifier",
+        choices=["mock", "llm"],
+        default="mock",
+        help="Classifier backend to use. Defaults to mock.",
+    )
+    parser.add_argument(
+        "--limit",
+        type=int,
+        default=None,
+        help="Optional number of feedback messages to process.",
+    )
+    return parser.parse_args()
+
+
 def main() -> None:
-    processed_items = process_feedback()
-    write_outputs(processed_items)
-    print(f"Processed {len(processed_items)} feedback messages.")
+    args = parse_args()
+    processed_items = process_feedback(classifier=args.classifier, limit=args.limit)
+    write_outputs(processed_items, classifier=args.classifier)
+    print(f"Processed {len(processed_items)} feedback messages with {args.classifier} classifier.")
     print(f"Wrote outputs to {OUTPUT_DIR}")
 
 
