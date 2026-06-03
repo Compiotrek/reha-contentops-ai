@@ -76,6 +76,8 @@ def process_single_feedback(
         match_status=decision.match_status,
         decision_reason=decision.reason,
         final_action=decision.final_action,
+        review_required=decision.review_required,
+        priority=decision.priority,
     )
 
 
@@ -115,6 +117,55 @@ def write_outputs(
         encoding="utf-8",
     )
 
+    decision_columns = [
+        "message_id",
+        "user_message",
+        "labels",
+        "body_region",
+        "therapy_goal",
+        "difficulty_requested",
+        "equipment",
+        "safety_flag",
+        "classifier_mode",
+        "classifier_source",
+        "matcher_mode",
+        "routing",
+        "match_status",
+        "final_action",
+        "review_required",
+        "priority",
+        "decision_reason",
+        "top_match_exercise_id",
+        "top_match_title",
+        "top_match_score",
+        "top_match_vector_similarity",
+        "top_match_metadata_fit_score",
+        "top_match_final_score",
+        "top_match_metadata_mismatches",
+        "confidence",
+        "evidence_quote",
+    ]
+    decision_rows = [_content_ops_decision_row(item) for item in processed_items]
+    pd.DataFrame(decision_rows, columns=decision_columns).to_csv(
+        OUTPUT_DIR / "content_ops_decisions.csv",
+        index=False,
+        encoding="utf-8",
+    )
+
+    review_columns = [
+        "message_id",
+        "user_message",
+        "labels",
+        "routing",
+        "match_status",
+        "final_action",
+        "review_required",
+        "priority",
+        "top_match_title",
+        "top_match_score",
+        "metadata_mismatches",
+        "decision_reason",
+    ]
     review_rows = []
     for item in processed_items:
         if _include_in_review_queue(item):
@@ -127,6 +178,8 @@ def write_outputs(
                     "routing": item.decision.routing,
                     "match_status": item.decision.match_status,
                     "final_action": item.decision.final_action,
+                    "review_required": item.decision.review_required,
+                    "priority": item.decision.priority,
                     "top_match_title": top_match.title if top_match else "",
                     "top_match_score": _match_score(top_match) if top_match else "",
                     "metadata_mismatches": (
@@ -136,7 +189,9 @@ def write_outputs(
                 }
             )
 
-    pd.DataFrame(review_rows).to_csv(OUTPUT_DIR / "review_queue.csv", index=False)
+    pd.DataFrame(review_rows, columns=review_columns).to_csv(
+        OUTPUT_DIR / "review_queue.csv", index=False
+    )
     generate_daily_report(
         processed_items,
         str(OUTPUT_DIR / "daily_report.md"),
@@ -152,17 +207,52 @@ def _model_dump(item: ProcessedFeedback) -> dict:
 
 
 def _include_in_review_queue(item: ProcessedFeedback) -> bool:
-    review_actions = {
-        "route_to_safety_review",
-        "route_to_human_review",
-        "link_existing_content_for_review",
-        "review_possible_duplicate",
-        "review_metadata",
+    return item.decision.review_required
+
+
+def _content_ops_decision_row(item: ProcessedFeedback) -> dict:
+    classification = item.classification
+    decision = item.decision
+    top_match = item.top_matches[0] if item.top_matches else None
+
+    return {
+        "message_id": item.message.message_id,
+        "user_message": item.message.user_message,
+        "labels": ";".join(classification.labels),
+        "body_region": classification.body_region or "",
+        "therapy_goal": classification.therapy_goal or "",
+        "difficulty_requested": classification.difficulty_requested or "",
+        "equipment": classification.equipment or "",
+        "safety_flag": _csv_bool(classification.safety_flag),
+        "classifier_mode": item.classifier_mode,
+        "classifier_source": classification.classifier_source or "",
+        "matcher_mode": item.matcher_mode,
+        "routing": decision.routing,
+        "match_status": decision.match_status,
+        "final_action": decision.final_action,
+        "review_required": _csv_bool(decision.review_required),
+        "priority": decision.priority,
+        "decision_reason": decision.reason,
+        "top_match_exercise_id": top_match.exercise_id if top_match else "",
+        "top_match_title": top_match.title if top_match else "",
+        "top_match_score": _match_score(top_match) if top_match else "",
+        "top_match_vector_similarity": (
+            top_match.vector_similarity if top_match else ""
+        ),
+        "top_match_metadata_fit_score": (
+            top_match.metadata_fit_score if top_match else ""
+        ),
+        "top_match_final_score": top_match.final_score if top_match else "",
+        "top_match_metadata_mismatches": (
+            "; ".join(top_match.metadata_mismatches) if top_match else ""
+        ),
+        "confidence": classification.confidence,
+        "evidence_quote": classification.evidence_quote,
     }
-    return (
-        item.decision.routing in {"needs_review", "safety_review"}
-        or item.decision.final_action in review_actions
-    )
+
+
+def _csv_bool(value: bool) -> str:
+    return "true" if value else "false"
 
 
 def _match_score(match_result) -> float:

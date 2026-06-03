@@ -16,11 +16,15 @@ def generate_daily_report(
     routing_counts: Counter[str] = Counter()
     match_status_counts: Counter[str] = Counter()
     classifier_source_counts: Counter[str] = Counter()
+    final_action_counts: Counter[str] = Counter()
+    priority_counts: Counter[str] = Counter()
 
     for item in processed_items:
         label_counts.update(item.classification.labels)
         routing_counts.update([item.decision.routing])
         match_status_counts.update([item.decision.match_status])
+        final_action_counts.update([item.decision.final_action])
+        priority_counts.update([item.decision.priority])
         if item.classification.classifier_source:
             classifier_source_counts.update([item.classification.classifier_source])
 
@@ -37,8 +41,12 @@ def generate_daily_report(
     needs_review = [
         item.message.message_id
         for item in processed_items
-        if item.decision.routing == "needs_review"
+        if item.decision.review_required
     ]
+    review_required_count = sum(
+        1 for item in processed_items if item.decision.review_required
+    )
+    no_review_count = total_messages - review_required_count
 
     lines = [
         "# Daily Content Ops Report",
@@ -48,12 +56,16 @@ def generate_daily_report(
         f"- Classifier mode: {classifier or 'unknown'}",
         f"- Matcher mode: {matcher or 'unknown'}",
         f"- Total messages: {total_messages}",
+        f"- review_required_count: {review_required_count}",
+        f"- no_review_count: {no_review_count}",
         f"- existing_content: {match_status_counts['existing_content']}",
         f"- possible_duplicate: {match_status_counts['possible_duplicate']}",
         f"- metadata_issue: {match_status_counts['metadata_issue']}",
         f"- track_only: {match_status_counts['track_only']}",
         f"- safety_review: {match_status_counts['safety_review']}",
         f"- needs_review: {match_status_counts['needs_review']}",
+        "- content_ops_decisions.csv contains all processed decisions.",
+        "- review_queue.csv contains only review-required items.",
         *_hybrid_overview_lines(classifier, classifier_source_counts),
         "",
         "## Count by Label",
@@ -64,6 +76,15 @@ def generate_daily_report(
         "",
         "## Count by Match Status",
         *_format_counter(match_status_counts),
+        "",
+        "## Count by Final Action",
+        *_format_counter(final_action_counts),
+        "",
+        "## Count by Priority",
+        *_format_counter(priority_counts),
+        "",
+        "## Count by Classifier Source",
+        *_format_counter(classifier_source_counts),
         "",
         "## Content Requests",
         *_format_ids(content_requests),
@@ -105,6 +126,9 @@ def _hybrid_overview_lines(
         f"- hybrid_llm_processed: {classifier_source_counts['hybrid_llm']}",
         f"- hybrid_ml_processed: {classifier_source_counts['hybrid_ml']}",
         f"- ml_abstained: {classifier_source_counts['ml_abstain']}",
+        f"- hybrid_rule_safety: {classifier_source_counts['hybrid_rule_safety']}",
+        f"- hybrid_rule_bug: {classifier_source_counts['hybrid_rule_bug']}",
+        f"- hybrid_rule_praise: {classifier_source_counts['hybrid_rule_praise']}",
     ]
 
 

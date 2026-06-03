@@ -76,6 +76,8 @@ class DecisionResult(BaseModel):
     match_status: str
     reason: str
     final_action: str
+    review_required: bool = False
+    priority: str = "none"
 
 
 class ProcessedFeedback(BaseModel):
@@ -90,3 +92,5 @@ class ProcessedFeedback(BaseModel):
     match_status: str
     decision_reason: str
     final_action: str
+    review_required: bool = False
+    priority: str = "none"

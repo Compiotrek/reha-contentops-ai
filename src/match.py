@@ -24,7 +24,7 @@ def match_exercises_placeholder(
     placeholder for later semantic retrieval.
     """
     scored = [_score_exercise(classified, exercise) for exercise in exercises]
-    scored.sort(key=lambda item: item.score, reverse=True)
+    scored.sort(key=_placeholder_sort_key, reverse=True)
     return scored[:3]
 
 
@@ -202,14 +202,18 @@ def _score_exercise(classified: ClassifiedFeedback, exercise: Exercise) -> Match
     reasons: list[str] = []
 
     if classified.body_region and classified.body_region == exercise.body_region:
-        score += 0.5
+        score += 0.45
         reasons.append("body_region")
     if classified.equipment and classified.equipment == exercise.equipment:
         score += 0.25
         reasons.append("equipment")
     if classified.difficulty_requested and classified.difficulty_requested == exercise.difficulty:
-        score += 0.25
+        score += 0.2
         reasons.append("difficulty")
+    if classified.position and classified.position == exercise.position:
+        score += 0.1
+        reasons.append("position")
+    score = min(score, 1.0)
 
     return MatchResult(
         exercise_id=exercise.exercise_id,
@@ -219,6 +223,14 @@ def _score_exercise(classified: ClassifiedFeedback, exercise: Exercise) -> Match
         final_score=round(score, 3),
         metadata_mismatches=detect_metadata_mismatches(classified, exercise),
         reason=", ".join(reasons) if reasons else "No metadata fields matched.",
+    )
+
+
+def _placeholder_sort_key(match_result: MatchResult) -> tuple[float, int, int]:
+    return (
+        match_result.score,
+        -len(match_result.metadata_mismatches),
+        len(match_result.reasons),
     )
 
 

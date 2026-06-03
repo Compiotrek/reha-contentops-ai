@@ -1,5 +1,6 @@
 import json
 import os
+import re
 from pathlib import Path
 
 import joblib
@@ -32,6 +33,12 @@ metadata_issue, unclear, other. Include an evidence_quote copied exactly from
 the user message. Do not provide medical advice. If the message mentions pain,
 dizziness, unsafe movement, or post-operative uncertainty, set safety_flag true
 and route to safety_review.
+
+Normalized metadata values:
+- body_region: knee, back, shoulder, hip, ankle, neck, general, or null
+- difficulty_requested: beginner, intermediate, advanced, or null
+- equipment: none, chair, theraband, miniband, wall, mat, towel, or null
+- position: sitting, standing, lying, kneeling, all_fours, or null
 """.strip()
 
 SAFETY_KEYWORDS = ["pain", "schmerzen", "schwindelig", "unsicher", "op darf"]
@@ -40,6 +47,44 @@ CRITICISM_KEYWORDS = ["schwer", "zu lang", "nervt", "problem"]
 PRAISE_KEYWORDS = ["super", "gut", "verständlich"]
 BUG_KEYWORDS = ["startbutton", "reagiert nicht", "app"]
 METADATA_KEYWORDS = ["tag", "steht", "passt nicht", "anfänger"]
+RULE_GATE_SAFETY_PHRASES = [
+    "starke schmerzen",
+    "schmerzen bei der übung",
+    "schmerz bei der übung",
+    "mir wird schwindelig",
+    "schwindelig",
+    "wurde schlimmer",
+    "verschlimmert",
+    "nach meiner op",
+    "nach der op",
+    "darf ich",
+    "unsicher ob ich",
+]
+RULE_GATE_BUG_PHRASES = [
+    "video lädt nicht",
+    "ton fehlt",
+    "app stürzt ab",
+    "lässt sich nicht öffnen",
+    "link funktioniert nicht",
+    "login funktioniert nicht",
+]
+RULE_GATE_PRAISE_PHRASES = [
+    "sehr verständlich",
+    "super erklärt",
+    "hat mir gut geholfen",
+    "gute erklärung",
+    "kurze übungen gefallen mir",
+]
+RULE_GATE_PRAISE_BLOCKERS = [
+    "bitte",
+    "ich brauche",
+    "hätte gern",
+    "mehr",
+    "schmerzen",
+    "schwindelig",
+    "unsicher",
+    "darf ich",
+]
 
 
 class MLClassifierModelNotFoundError(FileNotFoundError):
@@ -102,6 +147,10 @@ def classify_feedback_ml(message: FeedbackMessage) -> ClassifiedFeedback:
 def classify_feedback_hybrid(
     message: FeedbackMessage, threshold: float = ML_AUTO_ACCEPT_CONFIDENCE
 ) -> ClassifiedFeedback:
+    gated_result = classify_with_rule_gates(message)
+    if gated_result:
+        return gated_result
+
     ml_result = classify_feedback_ml(message)
     if ml_result.routing == "safety_review":
         ml_result.classifier_source = "hybrid_ml"
@@ -122,6 +171,58 @@ def classify_feedback_hybrid(
         "ML classifier abstained and LLM fallback was unavailable or failed."
     )
     return ml_result
+
+
+def classify_with_rule_gates(message: FeedbackMessage) -> ClassifiedFeedback | None:
+    normalized = message.user_message.casefold()
+    if _contains_any(normalized, RULE_GATE_SAFETY_PHRASES):
+        return ClassifiedFeedback(
+            message_id=message.message_id,
+            user_message=message.user_message,
+            labels=["safety_signal"],
+            sentiment="negative",
+            safety_flag=True,
+            evidence_quote=message.user_message[:120],
+            summary="Rule gate detected a safety-related signal.",
+            confidence=0.99,
+            routing="safety_review",
+            classifier_source="hybrid_rule_safety",
+            abstained=False,
+        )
+
+    if _contains_any(normalized, RULE_GATE_BUG_PHRASES):
+        return ClassifiedFeedback(
+            message_id=message.message_id,
+            user_message=message.user_message,
+            labels=["bug_or_access_problem"],
+            sentiment="negative",
+            safety_flag=False,
+            evidence_quote=message.user_message[:120],
+            summary="Rule gate detected a technical or access issue.",
+            confidence=0.95,
+            routing="process",
+            classifier_source="hybrid_rule_bug",
+            abstained=False,
+        )
+
+    if _contains_any(normalized, RULE_GATE_PRAISE_PHRASES) and not _contains_any(
+        normalized, RULE_GATE_PRAISE_BLOCKERS
+    ):
+        return ClassifiedFeedback(
+            message_id=message.message_id,
+            user_message=message.user_message,
+            labels=["praise"],
+            sentiment="positive",
+            safety_flag=False,
+            evidence_quote=message.user_message[:120],
+            summary="Rule gate detected clear praise.",
+            confidence=0.93,
+            routing="process",
+            classifier_source="hybrid_rule_praise",
+            abstained=False,
+        )
+
+    return None
 
 
 def classify_feedback_llm(message: FeedbackMessage) -> ClassifiedFeedback:
@@ -389,6 +490,12 @@ def _detect_body_region(text: str) -> str | None:
     if "schulter" in text:
         return "shoulder"
     if "hüfte" in text:
+        return "hip"
+    if "sprunggelenk" in text or "knöchel" in text:
+        return "ankle"
+    if "nacken" in text:
+        return "neck"
+    if "allgemein" in text:
         return "general"
     return None
 
@@ -416,20 +523,36 @@ def _detect_difficulty(text: str) -> str | None:
 def _detect_equipment(text: str) -> str | None:
     if "ohne geräte" in text:
         return "none"
+    if "ohne equipment" in text:
+        return "none"
     if "theraband" in text:
         return "theraband"
     if "miniband" in text:
         return "miniband"
-    if "stuhl" in text or "sitzen" in text:
+    if "stuhl" in text:
         return "chair"
+    if "wand" in text:
+        return "wall"
+    if "matte" in text:
+        return "mat"
+    if "handtuch" in text:
+        return "towel"
     return None
 
 
 def _detect_position(text: str) -> str | None:
     if "sitzen" in text or "stuhl" in text:
-        return "seated"
+        return "sitting"
     if "liegen" in text:
-        return "supine"
+        return "lying"
+    if "knien" in text:
+        return "kneeling"
+    if "vierfüßler" in text or "vierfuessler" in text:
+        return "all_fours"
+    if "wand" in text or re.search(
+        r"\b(?:im stand|im stehen|standposition|stehen|stehend)\b", text
+    ):
+        return "standing"
     return None
 
 

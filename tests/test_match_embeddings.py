@@ -4,6 +4,7 @@ from src.match import (
     detect_metadata_mismatches,
     exercise_to_search_text,
     hybrid_score,
+    match_exercises_placeholder,
     metadata_fit_score,
 )
 from src.schemas import ClassifiedFeedback, Exercise
@@ -82,3 +83,43 @@ def test_hybrid_score_calculation() -> None:
 
     assert fit_score == 0.75
     assert hybrid_score(vector_similarity=0.8, fit_score=fit_score) == 0.788
+
+
+def test_placeholder_matcher_prefers_fewer_mismatches_on_tie() -> None:
+    classified = _classified(
+        body_region="general",
+        difficulty_requested="beginner",
+        equipment=None,
+        position="standing",
+    )
+    chair_exercise = _exercise(
+        exercise_id="ex_chair",
+        title="Chair General Demo",
+        body_region="general",
+        difficulty="beginner",
+        position="sitting",
+    )
+    standing_exercise = _exercise(
+        exercise_id="ex_standing",
+        title="Standing General Demo",
+        body_region="general",
+        difficulty="beginner",
+        position="standing",
+        equipment="none",
+    )
+
+    matches = match_exercises_placeholder(
+        classified, [chair_exercise, standing_exercise]
+    )
+
+    assert matches[0].exercise_id == "ex_standing"
+
+
+def test_placeholder_matcher_score_does_not_exceed_one_with_position_match() -> None:
+    classified = _classified(equipment="chair", position="sitting")
+    exercise = _exercise(position="sitting")
+
+    matches = match_exercises_placeholder(classified, [exercise])
+
+    assert matches[0].score <= 1.0
+    assert matches[0].final_score <= 1.0

@@ -169,13 +169,22 @@ curl -X POST http://localhost:8000/process-feedback \
 
 n8n can call `POST /process-feedback` with an HTTP Request node and pass the feedback message plus optional classifier and matcher modes.
 
+For routing, n8n should use an IF node that checks:
+
+```text
+review_required == true
+```
+
+Only those items should go to a human review queue. Items with `review_required == false` can be logged, aggregated, linked to existing content, or routed to support based on `final_action` and `priority`.
+
 ## Output Files
 
 The pipeline writes:
 
-- `outputs/processed_feedback.json`: full structured processed records.
-- `outputs/review_queue.csv`: safety and low-confidence cases for human review.
-- `outputs/daily_report.md`: deterministic content operations summary.
+- `outputs/processed_feedback.json`: full detailed JSON output for every processed message.
+- `outputs/content_ops_decisions.csv`: one row per message with decision, match, action, review, and priority fields.
+- `outputs/review_queue.csv`: only items that require human review.
+- `outputs/daily_report.md`: deterministic aggregate content operations report.
 - `outputs/exercise_embeddings.json`: local embedding cache for approved exercise records when embedding matching is used.
 - `outputs/ml_evaluation.md`: illustrative local ML classifier evaluation report.
 
