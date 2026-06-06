@@ -1,14 +1,21 @@
+from src.config import (
+    EMBEDDING_EXISTING_CONTENT_THRESHOLD,
+    EMBEDDING_POSSIBLE_DUPLICATE_METADATA_SUPPORT_THRESHOLD,
+    EMBEDDING_SIMILAR_CONTENT_THRESHOLD,
+    LOW_CONFIDENCE_REVIEW_THRESHOLD,
+    METADATA_EXISTING_CONTENT_THRESHOLD,
+    POSSIBLE_DUPLICATE_REVIEW_MAX_SCORE,
+    POSSIBLE_DUPLICATE_REVIEW_MIN_SCORE,
+    SIMILAR_CONTENT_THRESHOLD,
+    STRONG_EXISTING_CONTENT_THRESHOLD,
+)
 from src.schemas import ClassifiedFeedback, DecisionResult, MatchResult
-
-
-STRONG_EXISTING_CONTENT_THRESHOLD = 0.88
-SIMILAR_CONTENT_THRESHOLD = 0.75
 
 
 def apply_routing(classified: ClassifiedFeedback) -> str:
     if classified.safety_flag:
         return "safety_review"
-    if classified.confidence < 0.75:
+    if classified.confidence < LOW_CONFIDENCE_REVIEW_THRESHOLD:
         return "needs_review"
     return "process"
 
@@ -98,6 +105,7 @@ def decide_match_status(
     top_match = match_results[0]
     top_score = _match_score(top_match)
     has_key_mismatches = bool(top_match.metadata_mismatches)
+    is_embedding_match = top_match.vector_similarity is not None
 
     if top_score >= STRONG_EXISTING_CONTENT_THRESHOLD and not has_key_mismatches:
         return DecisionResult(
@@ -108,7 +116,38 @@ def decide_match_status(
             review_required=False,
             priority="none",
         )
-    if top_score >= SIMILAR_CONTENT_THRESHOLD and has_key_mismatches:
+    if (
+        is_embedding_match
+        and top_score >= EMBEDDING_EXISTING_CONTENT_THRESHOLD
+        and not has_key_mismatches
+    ):
+        return DecisionResult(
+            routing=routing,
+            match_status="existing_content",
+            reason=(
+                "Top approved exercise match has sufficient semantic similarity."
+            ),
+            final_action="link_existing_content",
+            review_required=False,
+            priority="none",
+        )
+    if (
+        not is_embedding_match
+        and top_score >= METADATA_EXISTING_CONTENT_THRESHOLD
+        and not has_key_mismatches
+    ):
+        return DecisionResult(
+            routing=routing,
+            match_status="existing_content",
+            reason=(
+                "Top approved exercise match has sufficient matching metadata "
+                "and no key metadata mismatches."
+            ),
+            final_action="link_existing_content",
+            review_required=False,
+            priority="none",
+        )
+    if _is_similar_content_match(top_match, top_score, has_key_mismatches):
         review_required = _possible_duplicate_requires_review(
             classified, top_match, top_score
         )
@@ -153,18 +192,50 @@ def _match_score(match_result: MatchResult) -> float:
     return match_result.score
 
 
+def _is_similar_content_match(
+    match_result: MatchResult, top_score: float, has_key_mismatches: bool
+) -> bool:
+    if not has_key_mismatches:
+        return False
+    if _has_topic_mismatch(match_result):
+        return False
+    if match_result.vector_similarity is not None:
+        return (
+            top_score >= EMBEDDING_SIMILAR_CONTENT_THRESHOLD
+            and (match_result.metadata_fit_score or 0.0)
+            >= EMBEDDING_POSSIBLE_DUPLICATE_METADATA_SUPPORT_THRESHOLD
+        )
+    if top_score >= SIMILAR_CONTENT_THRESHOLD:
+        return True
+    return False
+
+
 def _possible_duplicate_requires_review(
     classified: ClassifiedFeedback, top_match: MatchResult, top_score: float
 ) -> bool:
+    if top_match.vector_similarity is not None:
+        return (
+            top_score >= EMBEDDING_SIMILAR_CONTENT_THRESHOLD
+            and _has_equipment_or_difficulty_mismatch(top_match)
+        ) or classified.confidence < LOW_CONFIDENCE_REVIEW_THRESHOLD
     return (
-        0.70 <= top_score <= 0.82
+        POSSIBLE_DUPLICATE_REVIEW_MIN_SCORE
+        <= top_score
+        <= POSSIBLE_DUPLICATE_REVIEW_MAX_SCORE
         and _has_equipment_or_difficulty_mismatch(top_match)
-    ) or classified.confidence < 0.75
+    ) or classified.confidence < LOW_CONFIDENCE_REVIEW_THRESHOLD
 
 
 def _has_equipment_or_difficulty_mismatch(match_result: MatchResult) -> bool:
     return any(
         mismatch.startswith(("equipment mismatch", "difficulty mismatch"))
+        for mismatch in match_result.metadata_mismatches
+    )
+
+
+def _has_topic_mismatch(match_result: MatchResult) -> bool:
+    return any(
+        mismatch.startswith("topic mismatch")
         for mismatch in match_result.metadata_mismatches
     )
 

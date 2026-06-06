@@ -1,0 +1,21 @@
+message_id,timestamp,user_message,source
+demo_gap_001,2026-06-05 09:00:00,Ich will Handstandübungen für zuhause,slack
+demo_gap_002,2026-06-05 09:04:00,Gibt es Handstand Progressions ohne Equipment?,slack
+demo_gap_003,2026-06-05 09:08:00,Bitte mehr Übungen um einen Handstand zu lernen,slack
+demo_gap_004,2026-06-05 09:12:00,Ich suche eine einfache Handstand Vorbereitung an der Wand,slack
+demo_gap_005,2026-06-05 09:16:00,Könnt ihr Handstandübungen für zuhause ergänzen?,slack
+demo_gap_006,2026-06-05 09:20:00,Ich brauche Handstand Vorübungen für Schultern und Körperspannung,slack
+demo_gap_007,2026-06-05 09:24:00,Hätte gern einen Plan für Handstand lernen ohne Geräte,slack
+demo_existing_001,2026-06-05 09:28:00,Gibt es was fürs Knie ohne Geräte?,slack
+demo_existing_002,2026-06-05 09:32:00,Ich suche Hüftübungen mit Miniband,slack
+demo_existing_003,2026-06-05 09:36:00,Mehr Sprunggelenk bitte an der Wand,slack
+demo_support_001,2026-06-05 09:40:00,Video für Rücken lädt bei mir nicht,slack
+demo_support_002,2026-06-05 09:44:00,Login funktioniert nicht seit heute Morgen,slack
+demo_safety_001,2026-06-05 09:48:00,Mir wird bei der Übung schwindelig,slack
+demo_safety_002,2026-06-05 09:52:00,Nach meiner OP bin ich unsicher ob ich das machen darf,slack
+demo_praise_001,2026-06-05 09:56:00,Das Schultervideo ist super erklärt,slack
+demo_praise_002,2026-06-05 10:00:00,Die kurzen Übungen gefallen mir sehr,slack
+demo_metadata_001,2026-06-05 10:04:00,Die Tags passen nicht bei dem Theraband Video,slack
+demo_metadata_002,2026-06-05 10:08:00,Die Übung steht als Anfänger aber ist ziemlich schwer,slack
+demo_request_001,2026-06-05 10:12:00,Bitte Nackenübungen am Schreibtisch,slack
+demo_request_002,2026-06-05 10:16:00,Könnt ihr was ohne Equipment für unteren Rücken machen?,slack

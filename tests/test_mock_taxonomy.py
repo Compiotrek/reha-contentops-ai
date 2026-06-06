@@ -15,6 +15,41 @@ def test_mock_classifier_detects_new_dataset_taxonomy_values() -> None:
     assert classified.position == "standing"
 
 
+def test_mock_classifier_detects_will_as_content_request() -> None:
+    classified = classify_feedback_mock(
+        FeedbackMessage(
+            message_id="msg_test",
+            user_message="Ich will handstandübungen.",
+        )
+    )
+
+    assert classified.labels == ["content_request"]
+
+
+def test_mock_classifier_detects_hip_stem() -> None:
+    classified = classify_feedback_mock(
+        FeedbackMessage(
+            message_id="msg_test",
+            user_message="Ich suche Hüftübungen mit Miniband.",
+        )
+    )
+
+    assert classified.body_region == "hip"
+    assert classified.equipment == "miniband"
+
+
+def test_mock_classifier_detects_older_people_as_beginner() -> None:
+    classified = classify_feedback_mock(
+        FeedbackMessage(
+            message_id="msg_test",
+            user_message="Bitte mehr Übungen für ältere Leute im Sitzen.",
+        )
+    )
+
+    assert classified.difficulty_requested == "beginner"
+    assert classified.position == "sitting"
+
+
 def test_mock_classifier_does_not_detect_widerstandsband_as_standing() -> None:
     classified = classify_feedback_mock(
         FeedbackMessage(

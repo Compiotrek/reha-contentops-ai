@@ -8,11 +8,61 @@ import numpy as np
 from dotenv import load_dotenv
 
 from src.schemas import ClassifiedFeedback, Exercise, MatchResult
+from src.text_signals import extract_topic_tokens
 
 
 ROOT = Path(__file__).resolve().parents[1]
 EMBEDDING_CACHE_PATH = ROOT / "outputs" / "exercise_embeddings.json"
 DEFAULT_EMBEDDING_MODEL = "text-embedding-3-small"
+METADATA_SUPPORT_WEIGHTS = {
+    "body_region": 0.45,
+    "equipment": 0.25,
+    "difficulty_requested": 0.15,
+    "position": 0.10,
+    "therapy_goal": 0.05,
+}
+TOPIC_MISMATCH_PREFIX = "topic mismatch"
+METADATA_TOPIC_ALIASES = {
+    "body_region": {
+        "ankle": {"ankle", "sprunggelenk", "knoechel"},
+        "back": {"back", "ruecken"},
+        "general": {"general", "allgemein"},
+        "hip": {"hip", "huefte", "hueft"},
+        "knee": {"knee", "knie"},
+        "neck": {"neck", "nacken"},
+        "shoulder": {"shoulder", "schulter", "schultern"},
+    },
+    "therapy_goal": {
+        "balance": {"balance", "gleichgewicht"},
+        "coordination": {"coordination", "koordination"},
+        "endurance": {"endurance", "ausdauer"},
+        "mobility": {"mobility", "beweglichkeit", "mobilisation"},
+        "relaxation": {"relaxation", "entspannung"},
+        "stability": {"stability", "stabilitaet", "stabil"},
+        "strength": {"strength", "kraft", "kraeftigung", "kraeftigen"},
+    },
+    "difficulty_requested": {
+        "advanced": {"advanced", "fortgeschritten"},
+        "beginner": {"beginner", "anfaenger", "leicht", "einfach"},
+        "intermediate": {"intermediate", "mittel"},
+    },
+    "equipment": {
+        "chair": {"chair", "stuhl"},
+        "mat": {"mat", "matte"},
+        "miniband": {"miniband"},
+        "none": {"none", "geraete", "equipment"},
+        "theraband": {"theraband"},
+        "towel": {"towel", "handtuch"},
+        "wall": {"wall", "wand"},
+    },
+    "position": {
+        "all_fours": {"all_fours", "vierfuessler"},
+        "kneeling": {"kneeling", "knien"},
+        "lying": {"lying", "liegen"},
+        "sitting": {"sitting", "sitzen"},
+        "standing": {"standing", "stehen", "stehend"},
+    },
+}
 
 
 def match_exercises_placeholder(
@@ -23,6 +73,9 @@ def match_exercises_placeholder(
     This intentionally avoids embeddings or vector search. It is a deterministic
     placeholder for later semantic retrieval.
     """
+    if "content_request" not in classified.labels:
+        return []
+
     scored = [_score_exercise(classified, exercise) for exercise in exercises]
     scored.sort(key=_placeholder_sort_key, reverse=True)
     return scored[:3]
@@ -60,6 +113,8 @@ def classified_feedback_to_query_text(classified: ClassifiedFeedback) -> str:
         parts.append(f"Equipment: {classified.equipment}.")
     if classified.position:
         parts.append(f"Position: {classified.position}.")
+    if classified.request_theme:
+        parts.append(f"Request theme: {classified.request_theme}.")
     if classified.evidence_quote:
         parts.append(f"Evidence: {classified.evidence_quote}.")
     return " ".join(parts)
@@ -101,7 +156,11 @@ def detect_metadata_mismatches(
 ) -> list[str]:
     mismatches: list[str] = []
 
-    if classified.body_region and classified.body_region != exercise.body_region:
+    if (
+        classified.body_region
+        and classified.body_region != "general"
+        and classified.body_region != exercise.body_region
+    ):
         mismatches.append(
             f"body_region mismatch: requested {classified.body_region}, "
             f"exercise is {exercise.body_region}"
@@ -133,6 +192,25 @@ def detect_metadata_mismatches(
     return mismatches
 
 
+def detect_topic_mismatches(
+    classified: ClassifiedFeedback,
+    exercise: Exercise,
+) -> list[str]:
+    request_topics = extract_topic_tokens(classified.user_message)
+    uncovered_topics = request_topics - _covered_metadata_topics(classified)
+    if not uncovered_topics:
+        return []
+
+    exercise_topics = extract_topic_tokens(exercise_to_search_text(exercise))
+    missing_topics = sorted(
+        topic for topic in uncovered_topics if topic not in exercise_topics
+    )
+    if not missing_topics:
+        return []
+    shown_topics = ", ".join(missing_topics[:3])
+    return [f"{TOPIC_MISMATCH_PREFIX}: request topic not represented ({shown_topics})"]
+
+
 def metadata_fit_score(metadata_mismatches: list[str]) -> float:
     key_mismatch_count = sum(
         1
@@ -143,7 +221,9 @@ def metadata_fit_score(metadata_mismatches: list[str]) -> float:
 
 
 def hybrid_score(vector_similarity: float, fit_score: float) -> float:
-    return round((0.75 * vector_similarity) + (0.25 * fit_score), 3)
+    if fit_score <= 0.0:
+        return round(vector_similarity, 3)
+    return round((0.65 * vector_similarity) + (0.35 * fit_score), 3)
 
 
 def match_exercises_embeddings(
@@ -174,10 +254,13 @@ def match_exercises_embeddings(
             cosine_similarity(query_embedding, cached_item["embedding"]),
             3,
         )
-        mismatches = detect_metadata_mismatches(classified, exercise)
-        fit_score = metadata_fit_score(mismatches)
-        final_score = hybrid_score(vector_similarity, fit_score)
-        reasons = _embedding_match_reasons(vector_similarity, fit_score, mismatches)
+        metadata_support = _metadata_support_score(classified, exercise)
+        metadata_mismatches = [
+            *detect_metadata_mismatches(classified, exercise),
+            *detect_topic_mismatches(classified, exercise),
+        ]
+        final_score = hybrid_score(vector_similarity, metadata_support)
+        reasons = _embedding_match_reasons(vector_similarity, metadata_support)
 
         results.append(
             MatchResult(
@@ -186,15 +269,51 @@ def match_exercises_embeddings(
                 score=final_score,
                 reasons=reasons,
                 vector_similarity=vector_similarity,
-                metadata_fit_score=fit_score,
+                metadata_fit_score=metadata_support,
                 final_score=final_score,
-                metadata_mismatches=mismatches,
+                metadata_mismatches=metadata_mismatches,
                 reason="; ".join(reasons),
             )
         )
 
     results.sort(key=lambda item: item.final_score or item.score, reverse=True)
     return results[:top_k]
+
+
+def _metadata_support_score(
+    classified: ClassifiedFeedback,
+    exercise: Exercise,
+) -> float:
+    score = 0.0
+    if (
+        classified.body_region
+        and classified.body_region != "general"
+        and classified.body_region == exercise.body_region
+    ):
+        score += METADATA_SUPPORT_WEIGHTS["body_region"]
+    if classified.equipment and classified.equipment == exercise.equipment:
+        score += METADATA_SUPPORT_WEIGHTS["equipment"]
+    if (
+        classified.difficulty_requested
+        and classified.difficulty_requested == exercise.difficulty
+    ):
+        score += METADATA_SUPPORT_WEIGHTS["difficulty_requested"]
+    if classified.position and classified.position == exercise.position:
+        score += METADATA_SUPPORT_WEIGHTS["position"]
+    if classified.therapy_goal and classified.therapy_goal == exercise.therapy_goal:
+        score += METADATA_SUPPORT_WEIGHTS["therapy_goal"]
+    return round(min(score, 1.0), 3)
+
+
+def _covered_metadata_topics(classified: ClassifiedFeedback) -> set[str]:
+    covered = set()
+    for field, value_aliases in METADATA_TOPIC_ALIASES.items():
+        value = getattr(classified, field)
+        if value is None:
+            continue
+        covered.update(extract_topic_tokens(str(value)))
+        covered.update(value_aliases.get(value, set()))
+    return covered
 
 
 def _score_exercise(classified: ClassifiedFeedback, exercise: Exercise) -> MatchResult:
@@ -303,16 +422,9 @@ def _text_hash(text: str) -> str:
 
 
 def _embedding_match_reasons(
-    vector_similarity: float,
-    fit_score: float,
-    mismatches: list[str],
+    vector_similarity: float, metadata_support: float
 ) -> list[str]:
-    reasons = [
-        f"vector similarity {vector_similarity}",
-        f"metadata fit {fit_score}",
-    ]
-    if mismatches:
-        reasons.extend(mismatches)
-    else:
-        reasons.append("no key metadata mismatches")
+    reasons = [f"vector similarity {vector_similarity}"]
+    if metadata_support > 0.0:
+        reasons.append(f"metadata support {metadata_support}")
     return reasons

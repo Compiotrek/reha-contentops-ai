@@ -1,6 +1,7 @@
 from collections import Counter
 from pathlib import Path
 
+from src.content_gap import detect_content_gap_alerts
 from src.schemas import ProcessedFeedback
 
 
@@ -47,6 +48,7 @@ def generate_daily_report(
         1 for item in processed_items if item.decision.review_required
     )
     no_review_count = total_messages - review_required_count
+    content_gap_alerts = detect_content_gap_alerts(processed_items)
 
     lines = [
         "# Daily Content Ops Report",
@@ -62,10 +64,12 @@ def generate_daily_report(
         f"- possible_duplicate: {match_status_counts['possible_duplicate']}",
         f"- metadata_issue: {match_status_counts['metadata_issue']}",
         f"- track_only: {match_status_counts['track_only']}",
+        f"- content_gap_alerts: {len(content_gap_alerts)}",
         f"- safety_review: {match_status_counts['safety_review']}",
         f"- needs_review: {match_status_counts['needs_review']}",
         "- content_ops_decisions.csv contains all processed decisions.",
         "- review_queue.csv contains only review-required items.",
+        "- content_gap_alerts.csv contains repeated track-only content demand alerts.",
         *_hybrid_overview_lines(classifier, classifier_source_counts),
         "",
         "## Count by Label",
@@ -94,6 +98,9 @@ def generate_daily_report(
         "",
         "## Needs Review",
         *_format_ids(needs_review),
+        "",
+        "## Content Gap Alerts",
+        *_format_content_gap_alerts(content_gap_alerts),
         "",
         "## Example Message IDs",
         *_format_ids([item.message.message_id for item in processed_items[:5]]),
@@ -136,3 +143,12 @@ def _format_ids(message_ids: list[str]) -> list[str]:
     if not message_ids:
         return ["- None"]
     return [f"- {message_id}" for message_id in message_ids]
+
+
+def _format_content_gap_alerts(content_gap_alerts) -> list[str]:
+    if not content_gap_alerts:
+        return ["- None"]
+    return [
+        f"- {alert.alert_id}: {alert.theme} ({alert.request_count} requests)"
+        for alert in content_gap_alerts
+    ]

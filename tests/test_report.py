@@ -59,17 +59,44 @@ def test_daily_report_mentions_decision_and_review_outputs(tmp_path) -> None:
     report = output_path.read_text(encoding="utf-8")
     assert "- content_ops_decisions.csv contains all processed decisions." in report
     assert "- review_queue.csv contains only review-required items." in report
+    assert (
+        "- content_gap_alerts.csv contains repeated track-only content demand alerts."
+        in report
+    )
 
 
-def _processed_item(message_id: str, classifier_source: str) -> ProcessedFeedback:
-    message = FeedbackMessage(message_id=message_id, user_message="Bitte mehr Übungen.")
+def test_daily_report_includes_content_gap_alert_count(tmp_path) -> None:
+    output_path = tmp_path / "report.md"
+    processed_items = [
+        _processed_item(
+            f"gap_{index}",
+            classifier_source="hybrid_llm",
+            user_message=f"Ich will Handstand Übung Nummer {index}",
+        )
+        for index in range(5)
+    ]
+
+    generate_daily_report(processed_items, str(output_path), classifier="hybrid")
+
+    report = output_path.read_text(encoding="utf-8")
+    assert "- content_gap_alerts: 1" in report
+    assert "## Content Gap Alerts" in report
+    assert "5 requests" in report
+
+
+def _processed_item(
+    message_id: str,
+    classifier_source: str,
+    user_message: str = "Bitte mehr Übungen.",
+) -> ProcessedFeedback:
+    message = FeedbackMessage(message_id=message_id, user_message=user_message)
     classification = ClassifiedFeedback(
         message_id=message_id,
         user_message=message.user_message,
         labels=["content_request"],
         safety_flag=False,
         evidence_quote=message.user_message,
-        summary="Test classification.",
+        summary=user_message,
         confidence=0.9,
         routing="process",
         classifier_source=classifier_source,

@@ -58,6 +58,26 @@ def test_praise_rule_gate_does_not_trigger_when_request_word_present() -> None:
     assert classified is None
 
 
+def test_request_rule_gate_detects_will_request() -> None:
+    classified = classify_with_rule_gates(_message("Ich will handstandübungen."))
+
+    assert classified is not None
+    assert classified.labels == ["content_request"]
+    assert classified.routing == "process"
+    assert classified.safety_flag is False
+    assert classified.classifier_source == "hybrid_rule_request"
+
+
+def test_safety_rule_gate_still_wins_over_request_phrase() -> None:
+    classified = classify_with_rule_gates(
+        _message("Ich will Übungen, aber mir wird schwindelig.")
+    )
+
+    assert classified is not None
+    assert classified.labels == ["safety_signal"]
+    assert classified.routing == "safety_review"
+
+
 def test_normal_content_request_does_not_trigger_rule_gate() -> None:
     classified = classify_with_rule_gates(_message("Bitte mehr Knieübungen ohne Geräte."))
 
@@ -83,3 +103,41 @@ def test_hybrid_continues_existing_logic_when_rule_gate_returns_none(monkeypatch
     classified = classify_feedback_hybrid(_message("Bitte mehr Knieübungen ohne Geräte."))
 
     assert classified.classifier_source == "hybrid_ml"
+
+
+def test_hybrid_accepts_llm_only_when_not_abstained(monkeypatch) -> None:
+    ml_result = ClassifiedFeedback(
+        message_id="msg_test",
+        user_message="Komische Nachricht ohne klares Muster.",
+        labels=["unclear"],
+        safety_flag=False,
+        evidence_quote="Komische Nachricht ohne klares Muster.",
+        summary="ML abstained.",
+        confidence=0.4,
+        routing="needs_review",
+        classifier_source="ml_abstain",
+        abstained=True,
+        top2_margin=0.01,
+    )
+    llm_result = ClassifiedFeedback(
+        message_id="msg_test",
+        user_message="Komische Nachricht ohne klares Muster.",
+        labels=["unclear"],
+        safety_flag=False,
+        evidence_quote="Komische Nachricht ohne klares Muster.",
+        summary="LLM fallback.",
+        confidence=0.0,
+        routing="needs_review",
+        classifier_source="llm",
+        abstained=True,
+        abstain_reason="LLM failed.",
+    )
+    monkeypatch.setattr("src.classify.classify_feedback_ml", lambda message: ml_result)
+    monkeypatch.setattr("src.classify.classify_feedback_llm", lambda message: llm_result)
+
+    classified = classify_feedback_hybrid(
+        _message("Komische Nachricht ohne klares Muster.")
+    )
+
+    assert classified.classifier_source == "ml_abstain"
+    assert "LLM fallback failed" in (classified.abstain_reason or "")

@@ -1,0 +1,26 @@
+message_id,timestamp,user_message,source
+eval_001,2026-06-05 12:00:00,Ich brauche Knieübungen ohne Geräte,slack
+eval_002,2026-06-05 12:03:00,Gibt es Rückenübungen im Liegen auf der Matte?,slack
+eval_003,2026-06-05 12:06:00,Mehr Übungen für Hüfte mit Miniband bitte,slack
+eval_004,2026-06-05 12:09:00,Ich suche Nackenentspannung im Sitzen ohne Geräte,slack
+eval_005,2026-06-05 12:12:00,Ich brauche Knieübungen ohne Geräte im Sitzen,slack
+eval_006,2026-06-05 12:15:00,Bitte Schulterübungen an der Wand für Anfänger,slack
+eval_007,2026-06-05 12:18:00,Ich will Fußgewölbe Übungen für Läufer,slack
+eval_008,2026-06-05 12:21:00,Gibt es was für Plantarfaszie nach dem Joggen?,slack
+eval_009,2026-06-05 12:24:00,Bitte Fußsohle Mobilisation ohne Ball,slack
+eval_010,2026-06-05 12:27:00,Ich suche Übungen für Fersensporn Entlastung,slack
+eval_011,2026-06-05 12:30:00,Könnt ihr Fußgewölbe Stabilität ergänzen?,slack
+eval_012,2026-06-05 12:33:00,Mehr Kiefer entspannen Übungen wären gut,slack
+eval_013,2026-06-05 12:36:00,Gibt es Übungen gegen Zähnepressen?,slack
+eval_014,2026-06-05 12:39:00,Bitte kurze Kiefer Lockerung für abends,slack
+eval_015,2026-06-05 12:42:00,Ich suche TMJ Übungen ohne Geräte,slack
+eval_016,2026-06-05 12:45:00,Könnt ihr Kieferentspannung ergänzen?,slack
+eval_017,2026-06-05 12:48:00,Video lädt nicht und bleibt schwarz,slack
+eval_018,2026-06-05 12:51:00,Der Login funktioniert heute nicht,slack
+eval_019,2026-06-05 12:54:00,Das Schultervideo ist super erklärt,slack
+eval_020,2026-06-05 12:57:00,Die kurzen Einheiten helfen mir sehr,slack
+eval_021,2026-06-05 13:00:00,Mir wird bei der Übung schwindelig,slack
+eval_022,2026-06-05 13:03:00,Nach meiner OP bin ich unsicher ob ich das darf,slack
+eval_023,2026-06-05 13:06:00,Die Übung macht meine Schmerzen schlimmer,slack
+eval_024,2026-06-05 13:09:00,Die Tags passen beim Theraband Video nicht,slack
+eval_025,2026-06-05 13:12:00,Warum ist das als Anfänger markiert wenn es so schwer ist?,slack

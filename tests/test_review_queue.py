@@ -1,7 +1,7 @@
 import csv
 
-from src import process as process_module
-from src.process import write_outputs
+from src import output as output_module
+from src.output import write_outputs
 from src.schemas import (
     ClassifiedFeedback,
     DecisionResult,
@@ -12,7 +12,7 @@ from src.schemas import (
 
 
 def test_review_queue_excludes_items_without_required_review(tmp_path, monkeypatch) -> None:
-    monkeypatch.setattr(process_module, "OUTPUT_DIR", tmp_path)
+    monkeypatch.setattr(output_module, "OUTPUT_DIR", tmp_path)
     items = [
         _processed_item(
             "msg_review",
@@ -44,14 +44,47 @@ def test_review_queue_excludes_items_without_required_review(tmp_path, monkeypat
         rows = list(csv.DictReader(file))
 
     assert [row["message_id"] for row in rows] == ["msg_review"]
-    assert rows[0]["review_required"] == "True"
+    assert rows[0]["review_required"] == "true"
     assert rows[0]["priority"] == "medium"
+
+
+def test_review_queue_includes_request_metadata(tmp_path, monkeypatch) -> None:
+    monkeypatch.setattr(output_module, "OUTPUT_DIR", tmp_path)
+    item = _processed_item(
+        "msg_review",
+        DecisionResult(
+            routing="needs_review",
+            match_status="needs_review",
+            reason="Needs review.",
+            final_action="route_to_human_review",
+            review_required=True,
+            priority="medium",
+        ),
+    )
+    item.classification.body_region = "knee"
+    item.classification.therapy_goal = "strength"
+    item.classification.difficulty_requested = "beginner"
+    item.classification.equipment = "none"
+    item.classification.position = "standing"
+    item.classification.request_theme = "knee beginner no equipment"
+
+    write_outputs([item], classifier="mock", matcher="placeholder")
+
+    with (tmp_path / "review_queue.csv").open(encoding="utf-8", newline="") as file:
+        rows = list(csv.DictReader(file))
+
+    assert rows[0]["body_region"] == "knee"
+    assert rows[0]["therapy_goal"] == "strength"
+    assert rows[0]["difficulty_requested"] == "beginner"
+    assert rows[0]["equipment"] == "none"
+    assert rows[0]["position"] == "standing"
+    assert rows[0]["request_theme"] == "knee beginner no equipment"
 
 
 def test_content_ops_decisions_csv_includes_every_processed_item(
     tmp_path, monkeypatch
 ) -> None:
-    monkeypatch.setattr(process_module, "OUTPUT_DIR", tmp_path)
+    monkeypatch.setattr(output_module, "OUTPUT_DIR", tmp_path)
     items = [
         _processed_item(
             "msg_review",
@@ -87,12 +120,13 @@ def test_content_ops_decisions_csv_includes_every_processed_item(
     assert [row["message_id"] for row in rows] == ["msg_review", "msg_log"]
     assert rows[0]["review_required"] == "true"
     assert rows[1]["review_required"] == "false"
+    assert "abstain_reason" in rows[0]
 
 
 def test_content_ops_decisions_csv_includes_top_match_fields(
     tmp_path, monkeypatch
 ) -> None:
-    monkeypatch.setattr(process_module, "OUTPUT_DIR", tmp_path)
+    monkeypatch.setattr(output_module, "OUTPUT_DIR", tmp_path)
     match = MatchResult(
         exercise_id="ex_001",
         title="Demo Knee Stability",
@@ -138,16 +172,81 @@ def test_content_ops_decisions_csv_includes_top_match_fields(
     )
 
 
+def test_content_ops_decisions_csv_includes_abstain_reason(
+    tmp_path, monkeypatch
+) -> None:
+    monkeypatch.setattr(output_module, "OUTPUT_DIR", tmp_path)
+    item = _processed_item(
+        "msg_abstain",
+        DecisionResult(
+            routing="needs_review",
+            match_status="needs_review",
+            reason="Needs review.",
+            final_action="route_to_human_review",
+            review_required=True,
+            priority="medium",
+        ),
+    )
+    item.classification.abstain_reason = (
+        "ML classifier abstained; LLM fallback failed: APIConnectionError"
+    )
+
+    write_outputs([item], classifier="hybrid", matcher="embeddings")
+
+    with (tmp_path / "content_ops_decisions.csv").open(
+        encoding="utf-8", newline=""
+    ) as file:
+        rows = list(csv.DictReader(file))
+
+    assert rows[0]["abstain_reason"] == (
+        "ML classifier abstained; LLM fallback failed: APIConnectionError"
+    )
+
+
+def test_write_outputs_creates_content_gap_alert_csv(tmp_path, monkeypatch) -> None:
+    monkeypatch.setattr(output_module, "OUTPUT_DIR", tmp_path)
+    items = [
+        _processed_item(
+            f"gap_{index}",
+            DecisionResult(
+                routing="process",
+                match_status="track_only",
+                reason="Track repeated request.",
+                final_action="aggregate_content_request",
+                review_required=False,
+                priority="none",
+            ),
+            labels=["content_request"],
+            user_message=f"Ich will Handstand Übung Nummer {index}",
+        )
+        for index in range(5)
+    ]
+
+    write_outputs(items, classifier="hybrid", matcher="embeddings")
+
+    with (tmp_path / "content_gap_alerts.csv").open(
+        encoding="utf-8", newline=""
+    ) as file:
+        rows = list(csv.DictReader(file))
+
+    assert len(rows) == 1
+    assert rows[0]["request_count"] == "5"
+    assert rows[0]["recommended_action"] == "review_content_gap"
+    assert "gap_0" in rows[0]["message_ids"]
+
+
 def _processed_item(
     message_id: str,
     decision: DecisionResult,
     matches: list[MatchResult] | None = None,
+    labels: list[str] | None = None,
+    user_message: str = "Test message.",
 ) -> ProcessedFeedback:
-    message = FeedbackMessage(message_id=message_id, user_message="Test message.")
+    message = FeedbackMessage(message_id=message_id, user_message=user_message)
     classification = ClassifiedFeedback(
         message_id=message_id,
         user_message=message.user_message,
-        labels=["praise"],
+        labels=labels or ["praise"],
         safety_flag=False,
         evidence_quote=message.user_message,
         summary="Test classification.",

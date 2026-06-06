@@ -1,0 +1,660 @@
+{
+    "name": "Reha ContentOps Showcase",
+    "nodes": [
+        {
+            "parameters": {
+                "content": "## Webhook URLs\n\nUse separate webhooks for batch CSV and chat UI.\n\nBatch CSV / Slack-style batch:\n`/webhook/reha-contentops-batch`\n\nChat UI:\n`/webhook/reha-contentops-chat`\n\nBackend URL is hardcoded in the HTTP Request nodes for n8n Docker:\n`http://host.docker.internal:8000/process-feedback-batch`.\n\nThe batch lane accepts multipart form uploads with `file=@...` and returns an ops summary JSON. The chat lane returns a short `{ reply: ... }` JSON for the browser UI.",
+                "height": 360,
+                "width": 440,
+                "color": 4
+            },
+            "type": "n8n-nodes-base.stickyNote",
+            "typeVersion": 1,
+            "position": [
+                -592,
+                528
+            ],
+            "id": "ed5b8437-7352-4e79-a541-a77c39304d46",
+            "name": "Setup Notes"
+        },
+        {
+            "parameters": {
+                "content": "## Reha ContentOps AI Showcase\n\nThis workflow intentionally keeps AI logic in the FastAPI backend.\n\nBatch lane:\nManual/Webhook -> backend batch API -> ops summary -> review queue, content-gap ticket, ops digest\n\nChat lane:\nChat webhook -> backend batch API -> ops summary -> chat reply\n\nBackend owns:\n- exercise database loading\n- classification\n- metadata extraction\n- matching\n- content-gap detection\n- output CSV generation\n\nn8n only orchestrates, formats payloads, and routes outputs.",
+                "height": 408,
+                "width": 420,
+                "color": 4
+            },
+            "type": "n8n-nodes-base.stickyNote",
+            "typeVersion": 1,
+            "position": [
+                0,
+                0
+            ],
+            "id": "71741040-7e02-452f-872f-4104d335641c",
+            "name": "Showcase Notes"
+        },
+        {
+            "parameters": {},
+            "type": "n8n-nodes-base.manualTrigger",
+            "typeVersion": 1,
+            "position": [
+                48,
+                448
+            ],
+            "id": "92b50e5c-d4f3-4a28-90af-b49bcae16790",
+            "name": "Manual Demo Trigger"
+        },
+        {
+            "parameters": {
+                "httpMethod": "POST",
+                "path": "reha-contentops-batch",
+                "responseMode": "responseNode",
+                "options": {}
+            },
+            "type": "n8n-nodes-base.webhook",
+            "typeVersion": 2,
+            "position": [
+                48,
+                800
+            ],
+            "id": "59b43fc8-2533-476f-8667-b1976919747d",
+            "name": "Incoming Slack Batch Webhook",
+            "webhookId": "reha-contentops-batch"
+        },
+        {
+            "parameters": {
+                "assignments": {
+                    "assignments": [
+                        {
+                            "id": "10e282be-e5a1-49d0-aa9b-883f80d7e256",
+                            "name": "csv_text",
+                            "value": "message_id,user_message,source\nshowcase_001,Ich will Handstandübungen für Anfänger,slack\nshowcase_002,Gibt es Handstand Progressions ohne Equipment?,slack\nshowcase_003,Bitte mehr Übungen um einen Handstand zu lernen,slack\nshowcase_004,Ich suche eine Handstand Vorbereitung an der Wand,slack\nshowcase_005,Könnt ihr Handstandübungen für zuhause ergänzen?,slack\nshowcase_006,Video lädt nicht und bleibt schwarz,slack\nshowcase_007,Mir wird bei der Übung schwindelig,slack\nshowcase_008,Die Knieübungen ohne Geräte sind super erklärt,slack\nshowcase_009,Beim Theraband Video passen die Tags nicht,slack",
+                            "type": "string"
+                        },
+                        {
+                            "id": "3167f7ce-958a-4f4f-b912-15ed187d51bd",
+                            "name": "classifier",
+                            "value": "mock",
+                            "type": "string"
+                        },
+                        {
+                            "id": "503d7e34-ea4a-4e54-bd9f-76adab17f05e",
+                            "name": "matcher",
+                            "value": "placeholder",
+                            "type": "string"
+                        },
+                        {
+                            "id": "ef4828c8-f9bb-4999-bdf5-0fcd6d241327",
+                            "name": "metadata_extractor",
+                            "value": "rules",
+                            "type": "string"
+                        },
+                        {
+                            "id": "e40a0df9-4890-493a-bbc6-4681bd7bd16d",
+                            "name": "write_output_files",
+                            "value": true,
+                            "type": "boolean"
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "type": "n8n-nodes-base.set",
+            "typeVersion": 3.4,
+            "position": [
+                304,
+                448
+            ],
+            "id": "f7044bfc-4d9a-4670-80bf-db1bd9467dc1",
+            "name": "Demo Slack CSV Batch"
+        },
+        {
+            "parameters": {
+                "jsCode": "const inputItem = $input.first();\nconst data = inputItem.json ?? {};\nconst body = data.body ?? data;\nconst binary = inputItem.binary ?? {};\n\nfunction parseBoolean(value, fallback = true) {\n  if (value === undefined || value === null || value === '') return fallback;\n  if (typeof value === 'boolean') return value;\n  if (typeof value === 'string') {\n    return !['false', '0', 'no', 'nein'].includes(value.toLowerCase().trim());\n  }\n  return Boolean(value);\n}\n\nasync function binaryCsvText() {\n  const keys = ['file', 'data', 'csv'];\n  for (const key of keys) {\n    const file = binary[key];\n    if (!file) continue;\n\n    try {\n      if (this?.helpers?.getBinaryDataBuffer) {\n        const buffer = await this.helpers.getBinaryDataBuffer(0, key);\n        return buffer.toString('utf8');\n      }\n    } catch (error) {}\n\n    if (file.data && typeof file.data === 'string') {\n      try {\n        return Buffer.from(file.data, 'base64').toString('utf8');\n      } catch (error) {}\n    }\n  }\n  return undefined;\n}\n\nconst uploadedCsvText = await binaryCsvText.call(this);\nconst csvText = uploadedCsvText || body.csv_text || body.csv || undefined;\n\nreturn [{\n  json: {\n    csv_text: csvText,\n    messages: body.messages || undefined,\n    classifier: body.classifier || 'hybrid',\n    matcher: body.matcher || 'embeddings',\n    metadata_extractor: body.metadata_extractor || 'llm',\n    write_output_files: parseBoolean(body.write_output_files, true),\n    limit: body.limit\n  }\n}];"
+            },
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                304,
+                800
+            ],
+            "id": "ec452f5d-48fa-4e1c-a845-f35668828b26",
+            "name": "Normalize Webhook Batch"
+        },
+        {
+            "parameters": {
+                "jsCode": "const response = $json;\nconst items = response.items ?? [];\nconst alerts = response.content_gap_alerts ?? [];\n\nconst actionCounts = {};\nfor (const item of items) {\n  const action = item.final_action || item.decision?.final_action || 'unknown';\n  actionCounts[action] = (actionCounts[action] || 0) + 1;\n}\n\nconst reviewItems = items.filter(item => item.review_required || item.decision?.review_required);\nconst safetyItems = items.filter(item => (item.final_action || item.decision?.final_action) === 'route_to_safety_review');\nconst supportItems = items.filter(item => (item.final_action || item.decision?.final_action) === 'route_to_support');\nconst contentRequests = items.filter(item => (item.classification?.labels || []).includes('content_request'));\n\nreturn [{\n  json: {\n    processed_count: response.processed_count ?? items.length,\n    classifier: response.classifier,\n    matcher: response.matcher,\n    metadata_extractor: response.metadata_extractor,\n    backend_exercise_records_loaded: response.exercise_records_loaded,\n    outputs_written: response.outputs_written,\n    output_dir: response.output_dir,\n    action_counts: actionCounts,\n    review_count: reviewItems.length,\n    safety_count: safetyItems.length,\n    support_count: supportItems.length,\n    content_request_count: contentRequests.length,\n    content_gap_alert_count: alerts.length,\n    content_gap_alerts: alerts,\n    review_items: reviewItems.map(item => ({\n      message_id: item.message?.message_id,\n      user_message: item.message?.user_message,\n      labels: item.classification?.labels,\n      final_action: item.final_action || item.decision?.final_action,\n      match_status: item.match_status || item.decision?.match_status,\n      priority: item.priority || item.decision?.priority,\n      reason: item.decision_reason || item.decision?.reason\n    })),\n    processed_items: items\n  }\n}];"
+            },
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                928,
+                624
+            ],
+            "id": "5e90e30b-d73c-4e4a-aea6-c3dda6a4d297",
+            "name": "Build Ops Summary"
+        },
+        {
+            "parameters": {
+                "jsCode": "const reviews = $json.review_items ?? [];\nconst lines = reviews.map(item => `- ${item.message_id}: ${item.final_action} (${item.priority}) - ${item.user_message}`);\n\nreturn [{\n  json: {\n    route: 'human_review_queue',\n    review_count: reviews.length,\n    channel: '#content-ops-review',\n    title: reviews.length ? 'Human review required' : 'No human review required',\n    text: reviews.length ? lines.join('\\n') : 'No items require human review in this batch.',\n    items: reviews\n  }\n}];"
+            },
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                1248,
+                416
+            ],
+            "id": "dda65f49-ada7-4f3e-a08f-ac9e1c22a9c8",
+            "name": "Review Queue Payload"
+        },
+        {
+            "parameters": {
+                "jsCode": "const alerts = $json.content_gap_alerts ?? [];\nconst tickets = alerts.map(alert => ({\n  title: `Content gap: ${alert.theme}`,\n  priority: alert.request_count >= 8 ? 'high' : 'medium',\n  request_count: alert.request_count,\n  message_ids: alert.message_ids,\n  examples: alert.example_messages,\n  recommended_action: alert.recommended_action,\n  labels: ['content-gap', 'content-ops', 'ai-triage']\n}));\n\nreturn [{\n  json: {\n    route: 'content_gap_ticket',\n    content_gap_alert_count: alerts.length,\n    title: alerts.length ? 'Content gap alert' : 'No content gaps in this batch',\n    tickets\n  }\n}];"
+            },
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                1248,
+                624
+            ],
+            "id": "4ba3fc44-c723-4299-915c-9875829961de",
+            "name": "Content Gap Ticket Payload"
+        },
+        {
+            "parameters": {
+                "jsCode": "const actionCounts = $json.action_counts ?? {};\nconst actionLines = Object.entries(actionCounts)\n  .sort((a, b) => b[1] - a[1])\n  .map(([action, count]) => `- ${action}: ${count}`)\n  .join('\\n');\n\nreturn [{\n  json: {\n    route: 'daily_ops_digest',\n    title: 'Reha ContentOps AI batch digest',\n    text: [\n      `Processed: ${$json.processed_count}`,\n      `Exercise records loaded in backend: ${$json.backend_exercise_records_loaded}`,\n      `Review items: ${$json.review_count}`,\n      `Safety items: ${$json.safety_count}`,\n      `Support items: ${$json.support_count}`,\n      `Content gap alerts: ${$json.content_gap_alert_count}`,\n      '',\n      'Actions:',\n      actionLines || '- none',\n      '',\n      `Outputs written: ${$json.outputs_written}`,\n      $json.output_dir ? `Output dir: ${$json.output_dir}` : 'Output dir: not written'\n    ].join('\\n')\n  }\n}];"
+            },
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                1248,
+                816
+            ],
+            "id": "32ed15db-812f-415b-9f7e-2a4499f8be77",
+            "name": "Ops Digest Payload"
+        },
+        {
+            "parameters": {
+                "content": "## Replace these payload nodes with real integrations\n\n- Review Queue Payload -> Slack / Google Sheet / Notion\n- Content Gap Ticket Payload -> Jira / Linear / Asana\n- Ops Digest Payload -> Slack digest or email\n\nThe payloads are intentionally explicit so the workflow demos cleanly without credentials.",
+                "height": 240,
+                "width": 420,
+                "color": 5
+            },
+            "type": "n8n-nodes-base.stickyNote",
+            "typeVersion": 1,
+            "position": [
+                1648,
+                496
+            ],
+            "id": "398189dc-026c-412e-b203-b6a4921341df",
+            "name": "Integration Notes"
+        },
+        {
+            "parameters": {
+                "content": "## Two Demo Lanes\n\nBatch lane:\n- Manual Demo Trigger\n- Incoming Slack Batch Webhook\n- Normalize Webhook Batch\n- Call Backend Batch API\n- Build Ops Summary\n- Review Queue Payload\n- Content Gap Ticket Payload\n- Ops Digest Payload\n\nChat lane:\n- Incoming Chat UI Webhook\n- Normalize Chat Message\n- Call Backend Batch API (Chat)\n- Build Ops Summary (Chat)\n- Build Chat UI Reply\n- Respond to Chat UI\n\nBoth lanes call the same FastAPI backend. The chat lane also mirrors the review/gap/digest payloads for showcase visibility.",
+                "height": 424,
+                "width": 470,
+                "color": 6
+            },
+            "type": "n8n-nodes-base.stickyNote",
+            "typeVersion": 1,
+            "position": [
+                -560,
+                1072
+            ],
+            "id": "b2a4ba55-2186-4f46-ad53-f0ff6b2562cf",
+            "name": "Chat Add-on Notes"
+        },
+        {
+            "parameters": {
+                "jsCode": "const summary = $json;\nconst items = summary.processed_items ?? summary.items ?? [];\nconst alerts = summary.content_gap_alerts ?? [];\nconst first = items[0] ?? {};\nconst decision = first.decision ?? {};\nconst classification = first.classification ?? {};\nconst labels = classification.labels ?? [];\n\nconst finalAction = first.final_action || decision.final_action || 'unknown';\nconst matchStatus = first.match_status || decision.match_status || 'unknown';\n\nfunction normalizeStatus(value) {\n  return String(value ?? '')\n    .trim()\n    .toLowerCase()\n    .replace(/[\\s-]+/g, '_');\n}\n\nconst normalizedMatchStatus = normalizeStatus(matchStatus);\nconst normalizedFinalAction = normalizeStatus(finalAction);\n\nfunction labelIncludes(name) {\n  return labels.includes(name);\n}\n\nfunction pickName(value) {\n  if (!value) return null;\n\n  if (typeof value === 'string') return value;\n\n  if (typeof value === 'object') {\n    return (\n      value.name ||\n      value.title ||\n      value.exercise_name ||\n      value.display_name ||\n      value.slug ||\n      value.id ||\n      null\n    );\n  }\n\n  return null;\n}\n\nfunction collectExerciseNames(item) {\n  const found = [];\n\n  function add(value) {\n    if (!value) return;\n\n    if (Array.isArray(value)) {\n      for (const entry of value) add(entry);\n      return;\n    }\n\n    const name = pickName(value);\n    if (name && !found.includes(name)) found.push(name);\n\n    if (typeof value === 'object') {\n      add(value.exercise);\n      add(value.exercise_record);\n      add(value.content);\n      add(value.item);\n    }\n  }\n\n  add(item.matched_exercises);\n  add(item.exercise_matches);\n  add(item.matches);\n  add(item.recommended_exercises);\n  add(item.recommendations);\n  add(item.match);\n  add(item.best_match);\n  add(item.matched_exercise);\n  add(item.exercise);\n  add(item.content);\n  add(item.decision?.matched_exercises);\n  add(item.decision?.exercise_matches);\n  add(item.decision?.matches);\n  add(item.decision?.best_match);\n  add(item.decision?.matched_exercise);\n\n  return found.slice(0, 3);\n}\n\nconst exerciseNames = collectExerciseNames(first);\n\nconst isSafety =\n  finalAction === 'route_to_safety_review' ||\n  labelIncludes('safety') ||\n  labelIncludes('medical_risk');\n\nconst isSupport =\n  finalAction === 'route_to_support' ||\n  labelIncludes('support') ||\n  labelIncludes('bug_report') ||\n  labelIncludes('technical_issue');\n\nconst isPositive =\n  labelIncludes('positive_feedback') ||\n  labelIncludes('praise') ||\n  labelIncludes('positive');\n\nconst isContentRequest =\n  labelIncludes('content_request') ||\n  labelIncludes('exercise_request') ||\n  finalAction === 'create_content_gap_ticket';\n\nconst isTrackOnly =\n  normalizedMatchStatus === 'track_only' ||\n  normalizedFinalAction === 'track_only';\n\nconst isNoMatch =\n  [\n    'no_match',\n    'not_found',\n    'none',\n    'null',\n    'unknown',\n    'content_gap',\n    'gap'\n  ].includes(normalizedMatchStatus);\n\nconst isExistingContentMatch =\n  [\n    'existing_content',\n    'existing_exercise',\n    'existing_match',\n    'matched_existing_content',\n    'match_found',\n    'matched',\n    'exact_match',\n    'semantic_match'\n  ].includes(normalizedMatchStatus) ||\n  normalizedFinalAction.includes('existing');\n\nconst hasExistingExercise =\n  !isTrackOnly &&\n  !isNoMatch &&\n  isExistingContentMatch &&\n  exerciseNames.length > 0;\n\nlet reply;\nlet replyType;\nlet showAsMatch = false;\nlet visibleMatchedExercises = [];\n\nif (isSafety) {\n  replyType = 'safety_review';\n  reply = 'Danke für den Hinweis. Das klingt nach etwas, das wir sorgfältig prüfen sollten. Wir leiten dein Feedback an eine fachliche Review weiter.';\n} else if (isSupport) {\n  replyType = 'support';\n  reply = 'Danke für den Hinweis. Das klingt nach einem technischen Problem. Wir geben das an den Support weiter.';\n} else if (isPositive && !isContentRequest) {\n  replyType = 'positive_feedback';\n  reply = 'Danke für dein positives Feedback! Schön, dass dir die Übung beziehungsweise Erklärung geholfen hat.';\n} else if (isTrackOnly) {\n  replyType = 'content_gap';\n  showAsMatch = false;\n  visibleMatchedExercises = [];\n  reply = 'Danke für deine Anfrage. Dazu haben wir aktuell noch keinen passenden bestehenden Inhalt gefunden. Wir merken uns das als Content-Wunsch.';\n} else if (hasExistingExercise) {\n  replyType = 'existing_exercise';\n  showAsMatch = true;\n  visibleMatchedExercises = exerciseNames;\n\n  const list = exerciseNames.map(name => `„${name}“`).join(', ');\n  reply = exerciseNames.length === 1\n    ? `Ja, wir haben dazu bereits eine passende Übung: ${list}.`\n    : `Ja, wir haben dazu bereits passende Übungen: ${list}.`;\n} else if (isContentRequest || isNoMatch || !hasExistingExercise) {\n  replyType = 'content_gap';\n  showAsMatch = false;\n  visibleMatchedExercises = [];\n  reply = 'Danke für deine Anfrage. Dazu haben wir aktuell noch keinen passenden bestehenden Inhalt gefunden. Wir merken uns das als Content-Wunsch.';\n} else {\n  replyType = 'generic_feedback';\n  showAsMatch = false;\n  visibleMatchedExercises = [];\n  reply = 'Danke für dein Feedback. Wir haben es aufgenommen und werten es für die Content-Planung aus.';\n}\n\nreturn [{\n  json: {\n    ok: true,\n    reply,\n    reply_type: replyType,\n    show_as_match: showAsMatch,\n    is_match: showAsMatch,\n    matched_exercises: visibleMatchedExercises,\n    detected_exercise_candidates: exerciseNames,\n    final_action: finalAction,\n    match_status: matchStatus,\n    labels,\n    processed_count: summary.processed_count ?? items.length,\n    action_counts: summary.action_counts ?? {},\n    review_count: summary.review_count ?? 0,\n    safety_count: summary.safety_count ?? 0,\n    support_count: summary.support_count ?? 0,\n    content_request_count: summary.content_request_count ?? 0,\n    content_gap_alert_count: summary.content_gap_alert_count ?? alerts.length,\n    content_gap_alerts: alerts\n  }\n}];"
+            },
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                1248,
+                1104
+            ],
+            "id": "5fc90163-c54c-428b-aa31-94cc85001f24",
+            "name": "Build Chat UI Reply"
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "http://host.docker.internal:8000/process-feedback-batch",
+                "sendHeaders": true,
+                "specifyHeaders": "json",
+                "jsonHeaders": "{\n  \"Content-Type\": \"application/json\"\n}",
+                "sendBody": true,
+                "specifyBody": "json",
+                "jsonBody": "={{ {\n  csv_text: $json.csv_text,\n  messages: $json.messages,\n  classifier: $json.classifier,\n  matcher: $json.matcher,\n  metadata_extractor: $json.metadata_extractor,\n  write_output_files: $json.write_output_files,\n  limit: $json.limit\n} }}",
+                "options": {
+                    "timeout": 300000
+                }
+            },
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.3,
+            "position": [
+                624,
+                624
+            ],
+            "id": "ce0398fd-e19a-4ec7-afa7-03053b0045c1",
+            "name": "Call Backend Batch API"
+        },
+        {
+            "parameters": {
+                "respondWith": "json",
+                "responseBody": "={{$json}}",
+                "options": {
+                    "responseCode": 200,
+                    "responseHeaders": {
+                        "entries": [
+                            {
+                                "name": "Access-Control-Allow-Origin",
+                                "value": "*"
+                            },
+                            {
+                                "name": "Access-Control-Allow-Methods",
+                                "value": "POST, OPTIONS"
+                            },
+                            {
+                                "name": "Access-Control-Allow-Headers",
+                                "value": "Content-Type"
+                            }
+                        ]
+                    }
+                }
+            },
+            "type": "n8n-nodes-base.respondToWebhook",
+            "typeVersion": 1.4,
+            "position": [
+                1552,
+                1104
+            ],
+            "id": "a918bd94-034e-45d1-9143-109162a7ec5d",
+            "name": "Respond to Chat UI"
+        },
+        {
+            "parameters": {
+                "httpMethod": "POST",
+                "path": "reha-contentops-chat",
+                "responseMode": "responseNode",
+                "options": {}
+            },
+            "type": "n8n-nodes-base.webhook",
+            "typeVersion": 2,
+            "position": [
+                48,
+                1264
+            ],
+            "id": "6fb59dbb-825c-4c31-bf32-a34ddd4c3c0b",
+            "name": "Incoming Chat UI Webhook",
+            "webhookId": "reha-contentops-chat"
+        },
+        {
+            "parameters": {
+                "jsCode": "function parseJsonMaybe(value, fallback = {}) {\n  if (value === undefined || value === null || value === '') return fallback;\n\n  if (typeof value === 'string') {\n    try {\n      return JSON.parse(value);\n    } catch (error) {\n      return { message: value };\n    }\n  }\n\n  return value;\n}\n\nfunction parseBoolean(value, fallback = true) {\n  if (value === undefined || value === null || value === '') return fallback;\n  if (typeof value === 'boolean') return value;\n  if (typeof value === 'string') {\n    return !['false', '0', 'no', 'nein'].includes(value.toLowerCase().trim());\n  }\n  return Boolean(value);\n}\n\nconst inputItem = $input.first();\nconst data = inputItem.json ?? {};\nlet body = data.body ?? data;\n\n// Supports browser requests sent as text/plain to avoid CORS preflight.\nbody = parseJsonMaybe(body, body);\n\nconst userMessage =\n  body.user_message ||\n  body.message ||\n  body.text ||\n  body.feedback ||\n  body.chat_message;\n\nlet messages = body.messages;\n\nif (typeof messages === 'string') {\n  try {\n    messages = JSON.parse(messages);\n  } catch (error) {\n    messages = undefined;\n  }\n}\n\nif (!messages && userMessage) {\n  messages = [{\n    message_id: body.message_id || `chat_${Date.now()}`,\n    user_message: userMessage,\n    source: body.source || 'chat_ui'\n  }];\n}\n\nif (!Array.isArray(messages) || !messages.length) {\n  throw new Error('No chat message found. Send { \"message\": \"...\" } or { \"messages\": [...] }.');\n}\n\nreturn [{\n  json: {\n    backend_url: body.backend_url || 'http://127.0.0.1:8000/process-feedback-batch',\n    csv_text: undefined,\n    messages,\n    classifier: body.classifier || 'hybrid',\n    matcher: body.matcher || 'embeddings',\n    metadata_extractor: body.metadata_extractor || 'llm',\n    write_output_files: parseBoolean(body.write_output_files, true),\n    limit: body.limit,\n    incoming_message: messages[0]?.user_message,\n    incoming_message_id: messages[0]?.message_id\n  }\n}];"
+            },
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                304,
+                1264
+            ],
+            "id": "3cd81869-5a38-4354-87ae-be696e87e4b4",
+            "name": "Normalize Chat Message"
+        },
+        {
+            "parameters": {
+                "jsCode": "const response = $json;\nconst items = response.items ?? [];\nconst alerts = response.content_gap_alerts ?? [];\n\nconst actionCounts = {};\nfor (const item of items) {\n  const action = item.final_action || item.decision?.final_action || 'unknown';\n  actionCounts[action] = (actionCounts[action] || 0) + 1;\n}\n\nconst reviewItems = items.filter(item => item.review_required || item.decision?.review_required);\nconst safetyItems = items.filter(item => (item.final_action || item.decision?.final_action) === 'route_to_safety_review');\nconst supportItems = items.filter(item => (item.final_action || item.decision?.final_action) === 'route_to_support');\nconst contentRequests = items.filter(item => (item.classification?.labels || []).includes('content_request'));\n\nreturn [{\n  json: {\n    processed_count: response.processed_count ?? items.length,\n    classifier: response.classifier,\n    matcher: response.matcher,\n    metadata_extractor: response.metadata_extractor,\n    backend_exercise_records_loaded: response.exercise_records_loaded,\n    outputs_written: response.outputs_written,\n    output_dir: response.output_dir,\n    action_counts: actionCounts,\n    review_count: reviewItems.length,\n    safety_count: safetyItems.length,\n    support_count: supportItems.length,\n    content_request_count: contentRequests.length,\n    content_gap_alert_count: alerts.length,\n    content_gap_alerts: alerts,\n    review_items: reviewItems.map(item => ({\n      message_id: item.message?.message_id,\n      user_message: item.message?.user_message,\n      labels: item.classification?.labels,\n      final_action: item.final_action || item.decision?.final_action,\n      match_status: item.match_status || item.decision?.match_status,\n      priority: item.priority || item.decision?.priority,\n      reason: item.decision_reason || item.decision?.reason\n    })),\n    processed_items: items\n  }\n}];"
+            },
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                928,
+                1264
+            ],
+            "id": "3e244231-ad02-4855-8df4-29defaa78b8d",
+            "name": "Build Ops Summary (Chat)"
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "http://host.docker.internal:8000/process-feedback-batch",
+                "sendHeaders": true,
+                "specifyHeaders": "json",
+                "jsonHeaders": "{\n  \"Content-Type\": \"application/json\"\n}",
+                "sendBody": true,
+                "specifyBody": "json",
+                "jsonBody": "={{ {\n  csv_text: $json.csv_text,\n  messages: $json.messages,\n  classifier: $json.classifier,\n  matcher: $json.matcher,\n  metadata_extractor: $json.metadata_extractor,\n  write_output_files: $json.write_output_files,\n  limit: $json.limit\n} }}",
+                "options": {
+                    "timeout": 300000
+                }
+            },
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.3,
+            "position": [
+                624,
+                1264
+            ],
+            "id": "65eaa8ca-c1db-4f86-9421-a006297fc1b0",
+            "name": "Call Backend Batch API (Chat)"
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "http://host.docker.internal:8000/process-feedback-batch",
+                "sendHeaders": true,
+                "specifyHeaders": "json",
+                "jsonHeaders": "{\n  \"Content-Type\": \"application/json\"\n}",
+                "sendBody": true,
+                "specifyBody": "json",
+                "jsonBody": "={{ {\n  csv_text: $json.csv_text,\n  messages: $json.messages,\n  classifier: $json.classifier,\n  matcher: $json.matcher,\n  metadata_extractor: $json.metadata_extractor,\n  write_output_files: $json.write_output_files,\n  limit: $json.limit\n} }}",
+                "options": {
+                    "timeout": 300000
+                }
+            },
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.3,
+            "position": [
+                624,
+                800
+            ],
+            "id": "8d2a50e7-6fc5-47c6-906f-batchwebhook001",
+            "name": "Call Backend Batch API (Webhook)"
+        },
+        {
+            "parameters": {
+                "jsCode": "const response = $json;\nconst items = response.items ?? [];\nconst alerts = response.content_gap_alerts ?? [];\n\nconst actionCounts = {};\nfor (const item of items) {\n  const action = item.final_action || item.decision?.final_action || 'unknown';\n  actionCounts[action] = (actionCounts[action] || 0) + 1;\n}\n\nconst reviewItems = items.filter(item => item.review_required || item.decision?.review_required);\nconst safetyItems = items.filter(item => (item.final_action || item.decision?.final_action) === 'route_to_safety_review');\nconst supportItems = items.filter(item => (item.final_action || item.decision?.final_action) === 'route_to_support');\nconst contentRequests = items.filter(item => (item.classification?.labels || []).includes('content_request'));\n\nreturn [{\n  json: {\n    processed_count: response.processed_count ?? items.length,\n    classifier: response.classifier,\n    matcher: response.matcher,\n    metadata_extractor: response.metadata_extractor,\n    backend_exercise_records_loaded: response.exercise_records_loaded,\n    outputs_written: response.outputs_written,\n    output_dir: response.output_dir,\n    action_counts: actionCounts,\n    review_count: reviewItems.length,\n    safety_count: safetyItems.length,\n    support_count: supportItems.length,\n    content_request_count: contentRequests.length,\n    content_gap_alert_count: alerts.length,\n    content_gap_alerts: alerts,\n    review_items: reviewItems.map(item => ({\n      message_id: item.message?.message_id,\n      user_message: item.message?.user_message,\n      labels: item.classification?.labels,\n      final_action: item.final_action || item.decision?.final_action,\n      match_status: item.match_status || item.decision?.match_status,\n      priority: item.priority || item.decision?.priority,\n      reason: item.decision_reason || item.decision?.reason\n    })),\n    processed_items: items\n  }\n}];"
+            },
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                928,
+                800
+            ],
+            "id": "f08d2e2b-9dd2-4103-a862-batchsummary001",
+            "name": "Build Ops Summary (Webhook)"
+        },
+        {
+            "parameters": {
+                "jsCode": "const summary = $json;\n\nreturn [{\n  json: {\n    ok: true,\n    route: 'batch_webhook_response',\n    processed_count: summary.processed_count,\n    classifier: summary.classifier,\n    matcher: summary.matcher,\n    metadata_extractor: summary.metadata_extractor,\n    backend_exercise_records_loaded: summary.backend_exercise_records_loaded,\n    outputs_written: summary.outputs_written,\n    output_dir: summary.output_dir,\n    action_counts: summary.action_counts ?? {},\n    review_count: summary.review_count ?? 0,\n    safety_count: summary.safety_count ?? 0,\n    support_count: summary.support_count ?? 0,\n    content_request_count: summary.content_request_count ?? 0,\n    content_gap_alert_count: summary.content_gap_alert_count ?? 0,\n    content_gap_alerts: summary.content_gap_alerts ?? [],\n    review_items: summary.review_items ?? []\n  }\n}];"
+            },
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                1248,
+                1008
+            ],
+            "id": "5afc1ca5-d0e4-44aa-9dfc-batchresponse001",
+            "name": "Build Batch Webhook Response"
+        },
+        {
+            "parameters": {
+                "respondWith": "json",
+                "responseBody": "={{$json}}",
+                "options": {
+                    "responseCode": 200,
+                    "responseHeaders": {
+                        "entries": [
+                            {
+                                "name": "Access-Control-Allow-Origin",
+                                "value": "*"
+                            },
+                            {
+                                "name": "Access-Control-Allow-Methods",
+                                "value": "POST, OPTIONS"
+                            },
+                            {
+                                "name": "Access-Control-Allow-Headers",
+                                "value": "Content-Type"
+                            }
+                        ]
+                    }
+                }
+            },
+            "type": "n8n-nodes-base.respondToWebhook",
+            "typeVersion": 1.4,
+            "position": [
+                1552,
+                1008
+            ],
+            "id": "4280e1c4-76f3-46d4-9d22-batchrespond001",
+            "name": "Respond to Batch Webhook"
+        }
+    ],
+    "pinData": {},
+    "connections": {
+        "Manual Demo Trigger": {
+            "main": [
+                [
+                    {
+                        "node": "Demo Slack CSV Batch",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Incoming Slack Batch Webhook": {
+            "main": [
+                [
+                    {
+                        "node": "Normalize Webhook Batch",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Demo Slack CSV Batch": {
+            "main": [
+                [
+                    {
+                        "node": "Call Backend Batch API",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Normalize Webhook Batch": {
+            "main": [
+                [
+                    {
+                        "node": "Call Backend Batch API (Webhook)",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Build Ops Summary": {
+            "main": [
+                [
+                    {
+                        "node": "Review Queue Payload",
+                        "type": "main",
+                        "index": 0
+                    },
+                    {
+                        "node": "Content Gap Ticket Payload",
+                        "type": "main",
+                        "index": 0
+                    },
+                    {
+                        "node": "Ops Digest Payload",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Build Chat UI Reply": {
+            "main": [
+                [
+                    {
+                        "node": "Respond to Chat UI",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Call Backend Batch API": {
+            "main": [
+                [
+                    {
+                        "node": "Build Ops Summary",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Incoming Chat UI Webhook": {
+            "main": [
+                [
+                    {
+                        "node": "Normalize Chat Message",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Normalize Chat Message": {
+            "main": [
+                [
+                    {
+                        "node": "Call Backend Batch API (Chat)",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Build Ops Summary (Chat)": {
+            "main": [
+                [
+                    {
+                        "node": "Build Chat UI Reply",
+                        "type": "main",
+                        "index": 0
+                    },
+                    {
+                        "node": "Ops Digest Payload",
+                        "type": "main",
+                        "index": 0
+                    },
+                    {
+                        "node": "Content Gap Ticket Payload",
+                        "type": "main",
+                        "index": 0
+                    },
+                    {
+                        "node": "Review Queue Payload",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Call Backend Batch API (Chat)": {
+            "main": [
+                [
+                    {
+                        "node": "Build Ops Summary (Chat)",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Call Backend Batch API (Webhook)": {
+            "main": [
+                [
+                    {
+                        "node": "Build Ops Summary (Webhook)",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Build Ops Summary (Webhook)": {
+            "main": [
+                [
+                    {
+                        "node": "Review Queue Payload",
+                        "type": "main",
+                        "index": 0
+                    },
+                    {
+                        "node": "Content Gap Ticket Payload",
+                        "type": "main",
+                        "index": 0
+                    },
+                    {
+                        "node": "Ops Digest Payload",
+                        "type": "main",
+                        "index": 0
+                    },
+                    {
+                        "node": "Build Batch Webhook Response",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Build Batch Webhook Response": {
+            "main": [
+                [
+                    {
+                        "node": "Respond to Batch Webhook",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    },
+    "active": false,
+    "settings": {
+        "executionOrder": "v1",
+        "binaryMode": "separate"
+    },
+    "versionId": "25435707-150d-45a7-affe-dd78cafbdfb7",
+    "meta": {
+        "instanceId": "ac975a5f414f4f0c87d7dff8afd863848bfb2bbae689feb4823da5ef22c2c2c2"
+    },
+    "nodeGroups": [],
+    "id": "X4zlWBjbGUEeR4H2",
+    "tags": [
+        {
+            "name": "chat-ui",
+            "id": "92GHU7jCOaxzTSPA",
+            "updatedAt": "2026-06-05T00:53:38.846Z",
+            "createdAt": "2026-06-05T00:53:38.846Z"
+        },
+        {
+            "name": "add-on",
+            "id": "NBnKgVx1gXG5a7gu",
+            "updatedAt": "2026-06-05T00:57:29.638Z",
+            "createdAt": "2026-06-05T00:57:29.638Z"
+        },
+        {
+            "updatedAt": "2026-06-05T00:04:28.706Z",
+            "createdAt": "2026-06-05T00:04:28.706Z",
+            "id": "NQwqqnOYfwbPJvUZ",
+            "name": "content-ops"
+        },
+        {
+            "updatedAt": "2026-06-05T00:04:28.700Z",
+            "createdAt": "2026-06-05T00:04:28.700Z",
+            "id": "TyiJguoF2T5dklDA",
+            "name": "portfolio"
+        }
+    ]
+}

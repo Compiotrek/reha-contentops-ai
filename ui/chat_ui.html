@@ -1,0 +1,561 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Reha ContentOps Chat Demo</title>
+  <style>
+    :root {
+      --bg: #f4f6fb;
+      --panel: #ffffff;
+      --text: #152033;
+      --muted: #6b7280;
+      --border: #e5e7eb;
+      --user: #2563eb;
+      --bot: #eef2ff;
+      --bot-text: #1e293b;
+      --success: #16a34a;
+      --error: #dc2626;
+      --shadow: 0 18px 45px rgba(15, 23, 42, 0.12);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(37, 99, 235, 0.16), transparent 28rem),
+        radial-gradient(circle at bottom right, rgba(22, 163, 74, 0.12), transparent 24rem),
+        var(--bg);
+      color: var(--text);
+      display: grid;
+      place-items: center;
+      padding: 24px;
+    }
+
+    .app {
+      width: min(1040px, 100%);
+      display: grid;
+      grid-template-columns: 330px 1fr;
+      gap: 20px;
+      align-items: stretch;
+    }
+
+    .settings, .chat {
+      background: rgba(255, 255, 255, 0.9);
+      border: 1px solid rgba(229, 231, 235, 0.9);
+      border-radius: 24px;
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(12px);
+    }
+
+    .settings { padding: 22px; }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 22px;
+    }
+
+    .logo {
+      width: 42px;
+      height: 42px;
+      border-radius: 14px;
+      background: linear-gradient(135deg, #2563eb, #16a34a);
+      display: grid;
+      place-items: center;
+      color: white;
+      font-weight: 800;
+    }
+
+    h1 {
+      font-size: 18px;
+      line-height: 1.2;
+      margin: 0;
+    }
+
+    .subtitle {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    label {
+      display: block;
+      font-weight: 650;
+      font-size: 13px;
+      margin: 16px 0 7px;
+    }
+
+    input, select, textarea, button { font: inherit; }
+
+    input, select {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 11px 12px;
+      background: #fff;
+      color: var(--text);
+      outline: none;
+    }
+
+    input:focus, select:focus, textarea:focus {
+      border-color: #93c5fd;
+      box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.10);
+    }
+
+    .hint {
+      margin-top: 14px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .chat {
+      overflow: hidden;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      min-height: 700px;
+    }
+
+    .chat-header {
+      padding: 20px 22px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .status {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 11px;
+      border-radius: 999px;
+      background: #f8fafc;
+      color: var(--muted);
+      font-size: 13px;
+      white-space: nowrap;
+    }
+
+    .dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 99px;
+      background: var(--muted);
+    }
+
+    .status.ok .dot { background: var(--success); }
+    .status.err .dot { background: var(--error); }
+
+    .messages {
+      padding: 22px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      background:
+        linear-gradient(rgba(255,255,255,.78), rgba(255,255,255,.78)),
+        repeating-linear-gradient(45deg, rgba(148, 163, 184, 0.08) 0, rgba(148, 163, 184, 0.08) 1px, transparent 1px, transparent 14px);
+    }
+
+    .bubble-row { display: flex; }
+    .bubble-row.user { justify-content: flex-end; }
+    .bubble-row.bot, .bubble-row.system { justify-content: flex-start; }
+
+    .bubble {
+      max-width: min(78%, 640px);
+      padding: 12px 14px;
+      border-radius: 18px;
+      line-height: 1.45;
+      font-size: 15px;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .bubble.user {
+      background: var(--user);
+      color: white;
+      border-bottom-right-radius: 5px;
+    }
+
+    .bubble.bot, .bubble.system {
+      background: var(--bot);
+      color: var(--bot-text);
+      border-bottom-left-radius: 5px;
+    }
+
+    .bubble.loading {
+      opacity: 0.72;
+      font-style: italic;
+    }
+
+    .meta {
+      display: block;
+      margin-top: 7px;
+      font-size: 11px;
+      opacity: 0.72;
+    }
+
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 9px;
+    }
+
+    .chip {
+      font-size: 11px;
+      border-radius: 999px;
+      padding: 4px 8px;
+      background: rgba(37, 99, 235, 0.10);
+      color: #1d4ed8;
+    }
+
+    .composer {
+      padding: 18px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      gap: 12px;
+      align-items: end;
+      background: #fff;
+    }
+
+    textarea {
+      flex: 1;
+      resize: none;
+      min-height: 52px;
+      max-height: 160px;
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 14px 15px;
+      outline: none;
+      line-height: 1.4;
+    }
+
+    button {
+      border: 0;
+      border-radius: 16px;
+      padding: 14px 18px;
+      background: #2563eb;
+      color: white;
+      font-weight: 750;
+      cursor: pointer;
+      min-width: 104px;
+    }
+
+    button:hover { filter: brightness(0.96); }
+    button:disabled { opacity: 0.55; cursor: not-allowed; }
+
+    .small-button {
+      margin-top: 14px;
+      width: 100%;
+      background: #0f172a;
+    }
+
+    .secondary {
+      background: #334155;
+    }
+
+    code {
+      background: #f1f5f9;
+      border: 1px solid #e2e8f0;
+      padding: 2px 5px;
+      border-radius: 6px;
+      font-size: 12px;
+    }
+
+    @media (max-width: 900px) {
+      body { padding: 14px; }
+      .app { grid-template-columns: 1fr; }
+      .chat { min-height: 620px; }
+      .chat-header {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <aside class="settings">
+      <div class="brand">
+        <div class="logo">R</div>
+        <div>
+          <h1>Reha ContentOps Chat</h1>
+          <p class="subtitle">Permanent Webhook Demo</p>
+        </div>
+      </div>
+
+      <label for="webhookUrl">Webhook URL</label>
+      <input
+        id="webhookUrl"
+        value="http://localhost:5678/webhook/reha-contentops-chat"
+        placeholder="http://localhost:5678/webhook/reha-contentops-chat"
+      />
+
+      <label for="backendUrl">Backend URL, optional</label>
+      <input
+        id="backendUrl"
+        value=""
+        placeholder="leer lassen oder http://127.0.0.1:8000/process-feedback-batch"
+      />
+
+      <label for="classifier">Classifier</label>
+      <select id="classifier">
+        <option value="hybrid">hybrid</option>
+        <option value="mock">mock</option>
+      </select>
+
+      <label for="matcher">Matcher</label>
+      <select id="matcher">
+        <option value="embeddings">embeddings</option>
+        <option value="placeholder">placeholder</option>
+      </select>
+
+      <label for="metadataExtractor">Metadata Extractor</label>
+      <select id="metadataExtractor">
+        <option value="llm">llm</option>
+        <option value="rules">rules</option>
+      </select>
+
+      <button class="small-button" id="demoExisting" type="button">Demo: Content Request</button>
+      <button class="small-button secondary" id="demoPositive" type="button">Demo: Positives Feedback</button>
+
+      <p class="hint">
+        Für den permanenten Trigger muss der n8n Workflow aktiv sein. Dann nutzt du <code>/webhook/...</code>.
+        Zum Testen im Editor kannst du vorübergehend <code>/webhook-test/...</code> eintragen.
+      </p>
+
+      <p class="hint">
+        Die UI sendet absichtlich als <code>text/plain</code>, damit der Browser keinen CORS-Preflight macht.
+        Die n8n-Antwort enthält zusätzlich CORS-Header.
+      </p>
+    </aside>
+
+    <section class="chat">
+      <header class="chat-header">
+        <div>
+          <h1>Feedback Chat</h1>
+          <p class="subtitle">send → n8n → backend → receive</p>
+        </div>
+        <div class="status" id="status">
+          <span class="dot"></span>
+          <span id="statusText">Bereit</span>
+        </div>
+      </header>
+
+      <div class="messages" id="messages">
+        <div class="bubble-row bot">
+          <div class="bubble bot">
+            Hallo! Schreib eine Feedback-Nachricht, z. B. „Ich suche Handstandübungen für Anfänger“.
+            <span class="meta">Reha ContentOps</span>
+          </div>
+        </div>
+      </div>
+
+      <form class="composer" id="chatForm">
+        <textarea id="messageInput" placeholder="Nachricht schreiben..." rows="1"></textarea>
+        <button id="sendButton" type="submit">Senden</button>
+      </form>
+    </section>
+  </main>
+
+  <script>
+    const webhookUrl = document.getElementById("webhookUrl");
+    const backendUrl = document.getElementById("backendUrl");
+    const classifier = document.getElementById("classifier");
+    const matcher = document.getElementById("matcher");
+    const metadataExtractor = document.getElementById("metadataExtractor");
+    const messagesEl = document.getElementById("messages");
+    const form = document.getElementById("chatForm");
+    const input = document.getElementById("messageInput");
+    const sendButton = document.getElementById("sendButton");
+    const statusEl = document.getElementById("status");
+    const statusText = document.getElementById("statusText");
+
+    function setStatus(text, type = "") {
+      statusText.textContent = text;
+      statusEl.className = `status ${type}`;
+    }
+
+    function addBubble(text, role = "bot", meta = "", details = {}) {
+      const row = document.createElement("div");
+      row.className = `bubble-row ${role}`;
+
+      const bubble = document.createElement("div");
+      bubble.className = `bubble ${role}`;
+      bubble.textContent = text;
+
+      const chips = [];
+      if (details.reply_type) chips.push(details.reply_type);
+      if (details.final_action) chips.push(details.final_action);
+
+      if (chips.length) {
+        const chipsEl = document.createElement("div");
+        chipsEl.className = "chips";
+        chips.forEach(value => {
+          const chip = document.createElement("span");
+          chip.className = "chip";
+          chip.textContent = value;
+          chipsEl.appendChild(chip);
+        });
+        bubble.appendChild(chipsEl);
+      }
+
+      if (meta) {
+        const metaEl = document.createElement("span");
+        metaEl.className = "meta";
+        metaEl.textContent = meta;
+        bubble.appendChild(metaEl);
+      }
+
+      row.appendChild(bubble);
+      messagesEl.appendChild(row);
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+
+      return bubble;
+    }
+
+    function createPayload(userMessage) {
+      const payload = {
+        message_id: `chat_${Date.now()}`,
+        message: userMessage,
+        source: "chat_ui",
+        classifier: classifier.value,
+        matcher: matcher.value,
+        metadata_extractor: metadataExtractor.value,
+        write_output_files: true
+      };
+
+      const customBackendUrl = backendUrl.value.trim();
+      if (customBackendUrl) {
+        payload.backend_url = customBackendUrl;
+      }
+
+      return payload;
+    }
+
+    async function sendMessage(userMessage) {
+      const url = webhookUrl.value.trim();
+      if (!url) throw new Error("Webhook URL fehlt.");
+
+      const payload = createPayload(userMessage);
+
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "text/plain;charset=UTF-8"
+        },
+        body: JSON.stringify(payload)
+      });
+
+      const rawText = await response.text();
+
+      let parsed;
+      try {
+        parsed = rawText ? JSON.parse(rawText) : {};
+      } catch {
+        parsed = { reply: rawText || "Antwort erhalten, aber nicht als JSON.", raw_response: rawText };
+      }
+
+      if (!response.ok) {
+        throw new Error(`Webhook Fehler ${response.status}: ${rawText || response.statusText}`);
+      }
+
+      return parsed;
+    }
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+
+      const text = input.value.trim();
+      if (!text) return;
+
+      addBubble(text, "user", "Du");
+      input.value = "";
+      input.style.height = "auto";
+
+      sendButton.disabled = true;
+      setStatus("Verarbeite...", "");
+
+      const loadingBubble = addBubble("Denke kurz nach ...", "bot", "Reha ContentOps");
+      loadingBubble.classList.add("loading");
+
+      try {
+        const result = await sendMessage(text);
+
+        const reply =
+          result.reply ||
+          result.chat_reply ||
+          result.text ||
+          result.message ||
+          "Danke, dein Feedback wurde verarbeitet.";
+
+        loadingBubble.classList.remove("loading");
+        loadingBubble.textContent = reply;
+
+        const chips = document.createElement("div");
+        chips.className = "chips";
+
+        [result.reply_type, result.final_action].filter(Boolean).forEach(value => {
+          const chip = document.createElement("span");
+          chip.className = "chip";
+          chip.textContent = value;
+          chips.appendChild(chip);
+        });
+
+        if (chips.children.length) loadingBubble.appendChild(chips);
+
+        const meta = document.createElement("span");
+        meta.className = "meta";
+        meta.textContent = "Reha ContentOps";
+        loadingBubble.appendChild(meta);
+
+        setStatus("Antwort erhalten", "ok");
+      } catch (error) {
+        loadingBubble.classList.remove("loading");
+        loadingBubble.textContent = `Fehler beim Senden:\n${error.message}`;
+
+        const meta = document.createElement("span");
+        meta.className = "meta";
+        meta.textContent = "n8n";
+        loadingBubble.appendChild(meta);
+
+        setStatus("Fehler", "err");
+      } finally {
+        sendButton.disabled = false;
+        messagesEl.scrollTop = messagesEl.scrollHeight;
+      }
+    });
+
+    input.addEventListener("input", () => {
+      input.style.height = "auto";
+      input.style.height = `${Math.min(input.scrollHeight, 160)}px`;
+    });
+
+    input.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" && !event.shiftKey) {
+        event.preventDefault();
+        form.requestSubmit();
+      }
+    });
+
+    document.getElementById("demoExisting").addEventListener("click", () => {
+      input.value = "Ich suche Handstandübungen für Anfänger";
+      input.focus();
+      input.dispatchEvent(new Event("input"));
+    });
+
+    document.getElementById("demoPositive").addEventListener("click", () => {
+      input.value = "Die Knieübungen ohne Geräte sind super erklärt";
+      input.focus();
+      input.dispatchEvent(new Event("input"));
+    });
+  </script>
+</body>
+</html>

@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from pathlib import Path
 
 import numpy as np
@@ -11,7 +9,6 @@ from src.classify import (
     ML_AUTO_ACCEPT_CONFIDENCE,
     ML_AUTO_ACCEPT_MARGIN,
     ML_SAFETY_THRESHOLD,
-    _predict_label_probabilities,
     _predict_safety_probability,
     _top2_margin,
 )

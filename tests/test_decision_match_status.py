@@ -23,8 +23,8 @@ def _match(**overrides) -> MatchResult:
         "title": "Knee Exercise",
         "score": 0.9,
         "final_score": 0.9,
-        "vector_similarity": 0.9,
-        "metadata_fit_score": 1.0,
+        "vector_similarity": None,
+        "metadata_fit_score": None,
         "metadata_mismatches": [],
         "reasons": ["no key metadata mismatches"],
     }
@@ -38,6 +38,110 @@ def test_strong_score_without_mismatch_is_existing_content() -> None:
     assert decision.match_status == "existing_content"
     assert decision.review_required is False
     assert decision.final_action == "link_existing_content"
+
+
+def test_metadata_match_without_mismatch_is_existing_content() -> None:
+    decision = decide_match_status(_classified(), [_match(final_score=0.7)])
+
+    assert decision.match_status == "existing_content"
+    assert decision.review_required is False
+    assert decision.final_action == "link_existing_content"
+
+
+def test_weak_match_without_mismatch_stays_track_only() -> None:
+    decision = decide_match_status(_classified(), [_match(final_score=0.45)])
+
+    assert decision.match_status == "track_only"
+    assert decision.review_required is False
+
+
+def test_embedding_match_without_mismatch_is_existing_content() -> None:
+    decision = decide_match_status(
+        _classified(),
+        [
+            _match(
+                final_score=0.59,
+                vector_similarity=0.59,
+            )
+        ],
+    )
+
+    assert decision.match_status == "existing_content"
+    assert decision.final_action == "link_existing_content"
+    assert decision.review_required is False
+
+
+def test_embedding_match_below_similarity_threshold_stays_track_only() -> None:
+    decision = decide_match_status(
+        _classified(),
+        [
+            _match(
+                final_score=0.57,
+                vector_similarity=0.57,
+            )
+        ],
+    )
+
+    assert decision.match_status == "track_only"
+    assert decision.review_required is False
+
+
+def test_weak_embedding_match_with_mismatch_stays_track_only() -> None:
+    decision = decide_match_status(
+        _classified(),
+        [
+            _match(
+                final_score=0.56,
+                vector_similarity=0.6,
+                metadata_fit_score=0.55,
+                metadata_mismatches=[
+                    "equipment mismatch: requested none, exercise requires miniband"
+                ],
+            )
+        ],
+    )
+
+    assert decision.match_status == "track_only"
+    assert decision.review_required is False
+
+
+def test_embedding_match_with_strong_metadata_support_can_be_possible_duplicate() -> None:
+    decision = decide_match_status(
+        _classified(),
+        [
+            _match(
+                final_score=0.66,
+                vector_similarity=0.62,
+                metadata_fit_score=0.7,
+                metadata_mismatches=[
+                    "equipment mismatch: requested none, exercise requires miniband"
+                ],
+            )
+        ],
+    )
+
+    assert decision.match_status == "possible_duplicate"
+    assert decision.review_required is True
+
+
+def test_embedding_topic_mismatch_stays_track_only_even_with_metadata_support() -> None:
+    decision = decide_match_status(
+        _classified(),
+        [
+            _match(
+                final_score=0.66,
+                vector_similarity=0.62,
+                metadata_fit_score=0.8,
+                metadata_mismatches=[
+                    "topic mismatch: request topic not represented (handstand)",
+                    "difficulty mismatch: requested beginner, exercise is intermediate",
+                ],
+            )
+        ],
+    )
+
+    assert decision.match_status == "track_only"
+    assert decision.review_required is False
 
 
 def test_high_score_with_equipment_mismatch_is_possible_duplicate() -> None:

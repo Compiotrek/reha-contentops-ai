@@ -46,6 +46,8 @@ class ClassifiedFeedback(BaseModel):
     difficulty_requested: str | None = None
     equipment: str | None = None
     position: str | None = None
+    request_theme: str | None = None
+    metadata_source: str | None = None
     sentiment: str | None = None
     safety_flag: bool = False
     evidence_quote: str
